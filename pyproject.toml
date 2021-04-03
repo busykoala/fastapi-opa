@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "fastapi-opa"
+version = "0.1.0"
+description = "Fastapi OPA middleware incl. auth flow."
+authors = ["Matthias Osswald <m@osswald.li>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+repository = "https://github.com/busykoala/fastapi-opa"
+keywords = ["fastapi", "oidc", "authentication", "authorization"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.63.0"
+requests = "^2.25.1"
+uvicorn = "^0.13.4"
+PyJWT = {extras = ["crypto"], version = "^2.0.1"}
+
+[tool.poetry.dev-dependencies]
+flake9 = "^3.8.3"
+black = "^20.8b1"
+isort = "^5.8.0"
+bandit = "^1.7.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line_length = 79
+
+[tool.flake8]
+max-complexity = 15
+max-line-length = 79
+extend-ignore = "E203"
+
+[tool.isort]
+line_length = 79
+include_trailing_comma = true
+force_single_line = true
