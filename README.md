@@ -152,6 +152,6 @@ request if you would like to contribute to the package.
 
 ## Roadmap
 
-- Test implementation extensively
 - Document quick-start environment to empower users
 - Add other authentication flows
+- Allow more flexible way of opa jwt enrichment

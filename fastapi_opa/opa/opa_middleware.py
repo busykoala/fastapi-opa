@@ -44,7 +44,9 @@ class OPAMiddleware:
         # Check OPA decision for info provided in user_info
         is_authorized = False
         user_info_or_auth_redirect["request_method"] = scope.get("method")
+        # fmt: off
         user_info_or_auth_redirect["request_path"] = scope.get("path").split("/")[1:]  # noqa
+        # fmt: on
         data = {"input": user_info_or_auth_redirect}
         opa_decision = requests.post(
             self.config.opa_url, data=json.dumps(data)
