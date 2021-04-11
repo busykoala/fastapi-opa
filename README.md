@@ -30,7 +30,7 @@ the user is allowed to get any information from the endpoint.
 ## Installation
 
 ```bash
-poetry add fastapi-opa
+poetry add [--extras "graphql"] fastapi-opa 
 ```
 
 ## How to get started

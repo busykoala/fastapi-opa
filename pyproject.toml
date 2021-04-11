@@ -13,6 +13,8 @@ python = "^3.6"
 fastapi = "^0.63.0"
 requests = "^2.25.1"
 PyJWT = {extras = ["crypto"], version = "^2.0.1"}
+graphene = {version = "^2.1.8", optional = true}
+
 
 [tool.poetry.dev-dependencies]
 flake9 = "^3.8.3"
@@ -24,6 +26,9 @@ pytest-mock = "^3.5.1"
 mock = "^4.0.3"
 freezegun = "^1.1.0"
 Authlib = "^0.15.3"
+
+[tool.poetry.extras]
+graphql = ["graphene"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
