@@ -3,6 +3,7 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
+import pytest
 from cryptography.hazmat.primitives._serialization import Encoding
 from cryptography.hazmat.primitives._serialization import PublicFormat
 from freezegun import freeze_time
@@ -10,6 +11,7 @@ from authlib.jose import jwk
 import jwt
 
 from fastapi_opa.auth.auth_oidc import OIDCAuthentication
+from fastapi_opa.auth.exceptions import OIDCException
 from tests.utils import oidc_config
 from tests.utils import mock_response
 from tests.utils import oidc_well_known_response
@@ -67,7 +69,8 @@ def test_get_validated_token_using_rs256(mocker):
     with mocker.patch('fastapi_opa.auth.auth_oidc.requests.get', return_value=oidc_well_known_response()):
         config = oidc_config()
         oidc = OIDCAuthentication(config)
-    with mocker.patch('fastapi_opa.auth.auth_oidc.OIDCAuthentication.extract_token_key', return_value=pub_key):
+    with mocker.patch('fastapi_opa.auth.auth_oidc.OIDCAuthentication.extract_token_key',
+                      return_value=pub_key):
         response = oidc.obtain_validated_token("RS256", rs265_token)
 
     assert expected == response
@@ -89,23 +92,22 @@ def test_extract_token_keys(mocker):
     assert expected == actual
 
 
-def test_get_user_info():
-    # TODO: implement
-    assert True
+def test_validate_sub_matching(mocker):
+    sub_1 = {"sub": "subject1"}
+    sub_2 = {"sub": "subject2"}
+    with mocker.patch('fastapi_opa.auth.auth_oidc.requests.get', return_value=oidc_well_known_response()):
+        config = oidc_config()
+        oidc = OIDCAuthentication(config)
 
-
-def test_validate_sub_matching():
-    # TODO: implement
-    assert True
-
-
-def test_to_dict_or_raise():
-    # TODO: implement
-    assert True
+    # expected to not raise (matching sub)
+    oidc.validate_sub_matching(sub_1, sub_1)
+    # expected to raise (non matching sub)
+    with pytest.raises(OIDCException):
+        assert not oidc.validate_sub_matching(sub_1, sub_2)
 
 
 def construct_jwt(
-        algorithm: str, private_key: str = "", msg: Dict[str, Any] = None, headers: Optional[Dict] = None):
+    algorithm: str, private_key: str = "", msg: Dict[str, Any] = None, headers: Optional[Dict] = None):
     iat = datetime.datetime.utcnow()
     exp = datetime.datetime.utcnow() + datetime.timedelta(days=1000000)  # This or patch jwt.decode
     if not msg:
@@ -113,6 +115,7 @@ def construct_jwt(
             'name': 'John Doe',
             'aud': 'example-client',
             'jti': '68f7cf57-110d-4cbf-9f29-0f5ad4c90328',
+            'sub': 'test-sub',
             'iat': int(iat.timestamp()),
             'exp': int(exp.timestamp()),
         }
