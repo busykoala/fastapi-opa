@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from json.decoder import JSONDecodeError
 from typing import Dict
+from typing import List
 from typing import Union
 from urllib.parse import quote
 from urllib.parse import urlunparse
@@ -144,7 +145,7 @@ class OIDCAuthentication(OIDCAuthenticationInterface):
             raise OIDCException("Unsupported jwt algorithm found.")
 
     @staticmethod
-    def extract_token_key(jwks: Dict, id_token: str) -> str:
+    def extract_token_key(jwks: List[Dict], id_token: str) -> str:
         public_keys = {}
         for jwk in jwks:
             kid = jwk.get("kid")

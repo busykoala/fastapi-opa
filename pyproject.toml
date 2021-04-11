@@ -23,6 +23,8 @@ bandit = "^1.7.0"
 pytest = "^6.2.2"
 pytest-mock = "^3.5.1"
 mock = "^4.0.3"
+freezegun = "^1.1.0"
+Authlib = "^0.15.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
