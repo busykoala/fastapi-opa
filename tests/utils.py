@@ -1,18 +1,31 @@
+from typing import Dict
+from typing import Union
+
 from mock import Mock
+from starlette.responses import RedirectResponse
 
 from fastapi_opa.auth import OIDCConfig
+from fastapi_opa.auth.auth_interface import AuthInterface
 
 
 def mock_response(status_code, json_data=None):
-    mock_resp = Mock()
-    mock_resp.status_code = status_code
-    if json_data:
+    json_ = Mock()
+    json_.return_value = json_data
+    return Mock(status_code=status_code, json=json_)
 
-        def _json():
-            return json_data
 
-        mock_resp.json = _json
-    return mock_resp
+# ***************************
+# OPA Utils
+# ***************************
+class AuthenticationDummy(AuthInterface):
+    def authenticate(
+        self, *args: object, **kwargs: object
+    ) -> Union[RedirectResponse, Dict]:
+        return {
+            "stuff": "some info",
+            "username": "John Doe",
+            "role": "Administrator",
+        }
 
 
 # ***************************
@@ -39,16 +52,3 @@ def oidc_config():
         client_id="example-client",
         client_secret="secret",
     )  # nosec
-
-
-# def oidc_http_connection():
-#     mock_resp = Mock()
-#     mock_resp.url.scheme = "http"
-#     mock_resp.url.netloc = "fastapi-app.busykoala.ch"
-#     mock_resp.url.path = "/"
-#
-#     def _get(*args, **kwargs):
-#         return "oidc-user-code"
-#
-#     mock_resp.query_params.get = _get
-#     return mock_resp
