@@ -7,6 +7,7 @@ def mock_response(status_code, json_data=None):
     mock_resp = Mock()
     mock_resp.status_code = status_code
     if json_data:
+
         def _json():
             return json_data
 
@@ -22,11 +23,11 @@ def oidc_well_known_response():
         200,
         json_data={
             "issuer": "http://keycloak.busykoala.ch/auth/realms/example-realm",
-            "authorization_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/auth",
-            "token_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/token",
-            "userinfo_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/userinfo",
-            "jwks_uri": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/certs",
-        }
+            "authorization_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/auth",  # noqa
+            "token_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/token",  # noqa
+            "userinfo_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/userinfo",  # noqa
+            "jwks_uri": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/certs",  # noqa
+        },
     )
 
 
