@@ -35,6 +35,9 @@ poetry add fastapi-opa
 
 ## How to get started
 
+Checkout the wiki for a complete environment setup with Keycloak and Open Policy Agent:  
+[Getting Started with FastAPI app with Authentication and Authorization](https://github.com/busykoala/fastapi-opa/wiki#dev-setup)
+
 The package provides a very easy way to integrate authentication and
 authorization. We can decide what authentication flow we inject into the
 OPAMiddleware to be able choosing between different flows.
@@ -152,6 +155,6 @@ request if you would like to contribute to the package.
 
 ## Roadmap
 
-- Document quick-start environment to empower users
 - Add other authentication flows
 - Allow more flexible way of opa jwt enrichment
+- Implement GraphQL query parser as a jwt enrichment strategy
