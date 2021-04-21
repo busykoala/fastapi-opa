@@ -56,8 +56,7 @@ from fastapi_opa.auth import OIDCConfig
 opa_host = "http://localhost:8181"
 # In this example we use OIDC authentication flow (using Keycloak)
 oidc_config = OIDCConfig(
-    host="http://localhost:8080",  # host of your identity provider
-    realm="example-realm",  # realm id of your identity provider
+    well_known_endpoint="http://localhost:8000/auth/realms/example-realm/.well-known/openid-configuration",  # well known endpoint
     app_uri="http://localhost:4000",  # host where this app is running
     client_id="example-client",  # client id of your app configured in the identity provider
     client_secret="bbb4857c-21ba-44a3-8843-1364984a36906",  # the client secret retrieved from your identity provider

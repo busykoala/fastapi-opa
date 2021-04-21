@@ -1,16 +1,17 @@
 # Change Log
 
-## [0.1.1] - 2021-04-11
+## [1.0.0] - 2021-04-22
 
-### Added
+- Allow non-keycloak well_known endpoints and usage without a well_known
+  endpoint. This changes the interface of the OIDC config object.
+
+## [0.1.1] - 2021-04-11
 
 - Testing of OPA middleware and OIDC authentication as well as the
   pipeline setup for executing tests, style checks and dependency audit.
   ([#4](https://github.com/busykoala/fastapi-opa/pull/4))
   
 ## [0.1.0] - 2021-04-03
-
-### Added
 
 - Initial implementation of OPA middleware and OIDC authentication.
 - Package documentation and usage instructions.
