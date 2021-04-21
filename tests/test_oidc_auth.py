@@ -44,7 +44,6 @@ def test_get_auth_token(mocker):
         return_value=mock_response(200, {}),
     )
     oidc.get_auth_token("example_code", "callback_uri")
-    kwargs = mock.call_args_list.pop().kwargs
 
     expected = {
         "data": {
@@ -54,7 +53,11 @@ def test_get_auth_token(mocker):
         },
         "headers": {"Authorization": "Basic ZXhhbXBsZS1jbGllbnQ6c2VjcmV0"},
     }
-    assert expected == kwargs
+
+    for call in mock.call_args_list:
+        args, kwargs = call
+        for _ in args:
+            assert expected == kwargs
 
 
 @freeze_time("2021-04-04 12:12:12")
