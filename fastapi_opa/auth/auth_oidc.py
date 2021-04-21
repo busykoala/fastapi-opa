@@ -46,7 +46,12 @@ class OIDCAuthentication(OIDCAuthenticationInterface):
         self.config = config
         if self.config.well_known_endpoint:
             self.set_from_well_known()
-        elif self.config.issuer and self.config.authorization_endpoint and self.config.token_endpoint and self.config.jwks_uri:
+        elif (
+            self.config.issuer
+            and self.config.authorization_endpoint
+            and self.config.token_endpoint
+            and self.config.jwks_uri
+        ):
             self.issuer = self.config.issuer
             self.authorization_endpoint = self.config.authorization_endpoint
             self.token_endpoint = self.config.token_endpoint
@@ -58,7 +63,9 @@ class OIDCAuthentication(OIDCAuthenticationInterface):
             raise OIDCException("Endpoints not provided")
 
     def set_from_well_known(self):
-        endpoints = self.to_dict_or_raise(requests.get(self.config.well_known_endpoint))
+        endpoints = self.to_dict_or_raise(
+            requests.get(self.config.well_known_endpoint)
+        )
         self.issuer = endpoints.get("issuer")
         self.authorization_endpoint = endpoints.get("authorization_endpoint")
         self.token_endpoint = endpoints.get("token_endpoint")
