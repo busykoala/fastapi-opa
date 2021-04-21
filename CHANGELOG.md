@@ -4,6 +4,7 @@
 
 - Allow non-keycloak well_known endpoints and usage without a well_known
   endpoint. This changes the interface of the OIDC config object.
+- Add support for python versions > 3.6.
 
 ## [0.1.1] - 2021-04-11
 
