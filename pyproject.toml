@@ -9,7 +9,7 @@ repository = "https://github.com/busykoala/fastapi-opa"
 keywords = ["fastapi", "oidc", "authentication", "authorization"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.6"
 fastapi = "^0.63.0"
 requests = "^2.25.1"
 uvicorn = "^0.13.4"
