@@ -46,8 +46,7 @@ def oidc_well_known_response():
 
 def oidc_config():
     return OIDCConfig(
-        host="http://keycloak.busykoala.ch",
-        realm="example-realm",
+        well_known_endpoint="http://keycloak.busykoala.ch/auth/realms/example-realm/.well-known/openid-configuration",  # noqa
         app_uri="http://fastapi-app.busykoala.ch",
         client_id="example-client",
         client_secret="secret",

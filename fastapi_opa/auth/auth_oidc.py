@@ -25,32 +25,47 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class OIDCConfig:
-    host: str
-    realm: str
     app_uri: str
     client_id: str
     client_secret: str
     scope: str = field(default="openid email profile")
+
+    # provide either well_known or all the other values
+    well_known_endpoint: str = field(default="")
+    authorization_endpoint: str = field(default="")
+    issuer: str = field(default="")
+    token_endpoint: str = field(default="")
+    jwks_uri: str = field(default="")
+
+    userinfo_endpoint: str = field(default="")
     get_user_info: bool = field(default=False)
 
 
 class OIDCAuthentication(OIDCAuthenticationInterface):
-    well_known_pattern = "{}/auth/realms/{}/.well-known/openid-configuration"
-
     def __init__(self, config: OIDCConfig) -> None:
         self.config = config
-        endpoints = self.to_dict_or_raise(
-            requests.get(
-                self.well_known_pattern.format(
-                    self.config.host, self.config.realm
-                )
-            )
-        )
+        if self.config.well_known_endpoint:
+            self.set_from_well_known()
+        elif self.config.issuer and self.config.authorization_endpoint and self.config.token_endpoint and self.config.jwks_uri:
+            self.issuer = self.config.issuer
+            self.authorization_endpoint = self.config.authorization_endpoint
+            self.token_endpoint = self.config.token_endpoint
+            self.jwks_uri = self.config.jwks_uri
+            self.userinfo_endpoint = self.config.userinfo_endpoint
+            if self.config.get_user_info and not self.userinfo_endpoint:
+                raise OIDCException("Userinfo endpoint not provided")
+        else:
+            raise OIDCException("Endpoints not provided")
+
+    def set_from_well_known(self):
+        endpoints = self.to_dict_or_raise(requests.get(self.config.well_known_endpoint))
         self.issuer = endpoints.get("issuer")
         self.authorization_endpoint = endpoints.get("authorization_endpoint")
         self.token_endpoint = endpoints.get("token_endpoint")
-        self.userinfo_endpoint = endpoints.get("userinfo_endpoint")
         self.jwks_uri = endpoints.get("jwks_uri")
+        self.userinfo_endpoint = endpoints.get("userinfo_endpoint")
+        if self.config.get_user_info and not self.userinfo_endpoint:
+            raise OIDCException("Userinfo endpoint not provided")
 
     def authenticate(
         self, connection: HTTPConnection
