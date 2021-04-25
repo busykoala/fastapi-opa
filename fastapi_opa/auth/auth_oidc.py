@@ -50,7 +50,6 @@ class OIDCAuthentication(OIDCAuthenticationInterface):
             self.config.issuer
             and self.config.authorization_endpoint
             and self.config.token_endpoint
-            and self.config.jwks_uri
         ):
             self.issuer = self.config.issuer
             self.authorization_endpoint = self.config.authorization_endpoint
@@ -147,6 +146,11 @@ class OIDCAuthentication(OIDCAuthenticationInterface):
                     "An error occurred while decoding the id_token"
                 )
         elif alg == "RS256":
+            if not self.jwks_uri:
+                logger.error("JWKS endpoint not provided but RS256 used.")
+                raise OIDCException(
+                    "JWKS endpoint not provided but RS256 used."
+                )
             response = requests.get(self.jwks_uri)
             web_key_sets = self.to_dict_or_raise(response)
             keys = web_key_sets.get("keys")
