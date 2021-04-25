@@ -1,5 +1,9 @@
 # Change Log
 
+## [1.0.1] - 2021-04-25
+
+- Remove uvicorn as a pkg dependency.
+
 ## [1.0.0] - 2021-04-22
 
 - Allow non-keycloak well_known endpoints and usage without a well_known
