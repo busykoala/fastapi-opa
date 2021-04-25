@@ -3,6 +3,7 @@
 ## [1.0.1] - 2021-04-25
 
 - Remove uvicorn as a pkg dependency.
+- Make OIDC jkws endpoint optional (not necessary for the HS256 algorithm).
 
 ## [1.0.0] - 2021-04-22
 
