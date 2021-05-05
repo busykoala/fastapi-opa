@@ -5,6 +5,7 @@ from json.decoder import JSONDecodeError
 import requests
 from fastapi.responses import JSONResponse
 from starlette.requests import HTTPConnection
+from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette.types import ASGIApp
 from starlette.types import Receive
@@ -43,6 +44,13 @@ class OPAMiddleware:
 
         # Check OPA decision for info provided in user_info
         is_authorized = False
+        # Enrich user_info if injectables are provided
+        request = Request(scope, receive, send)
+        if self.config.injectables:
+            for injectable in self.config.injectables:
+                user_info_or_auth_redirect[
+                    injectable.key
+                ] = await injectable.extract(request)
         user_info_or_auth_redirect["request_method"] = scope.get("method")
         # fmt: off
         user_info_or_auth_redirect["request_path"] = scope.get("path").split("/")[1:]  # noqa

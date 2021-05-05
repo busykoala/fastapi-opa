@@ -1,11 +1,15 @@
+from json import JSONDecodeError
 from typing import Dict
+from typing import List
 from typing import Union
 
 from mock import Mock
+from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
 from fastapi_opa.auth import OIDCConfig
 from fastapi_opa.auth.auth_interface import AuthInterface
+from fastapi_opa.opa.opa_config import Injectable
 
 
 def mock_response(status_code, json_data=None):
@@ -26,6 +30,18 @@ class AuthenticationDummy(AuthInterface):
             "username": "John Doe",
             "role": "Administrator",
         }
+
+
+class OPAInjectableExample(Injectable):
+    async def extract(self, request: Request) -> List:
+        return [await self.get_payload(request)]
+
+    @staticmethod
+    async def get_payload(request):
+        try:
+            return await request.json()
+        except JSONDecodeError:
+            return
 
 
 # ***************************

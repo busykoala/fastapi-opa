@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from json import JSONDecodeError
 from typing import Any
 from typing import Dict
 from typing import List
@@ -16,6 +17,9 @@ from graphql.language.ast import NamedType
 from graphql.language.ast import OperationDefinition
 from graphql.language.ast import SelectionSet
 from graphql.language.ast import VariableDefinition
+from starlette.requests import Request
+
+from fastapi_opa.opa.opa_config import Injectable
 
 
 @dataclass
@@ -87,3 +91,17 @@ class GraphQLAnalysis:
             return self.deep_extract_type(item_type.type, "[{}]")
         else:
             return type_str.format(item_type.name.value)
+
+
+class GraphQLInjectable(Injectable):
+    async def extract(self, request: Request) -> List:
+        payload = await self.get_payload(request)
+        analyser = GraphQLAnalysis(payload)
+        return [op_data.__dict__ for op_data in analyser.operations]
+
+    @staticmethod
+    async def get_payload(request):
+        try:
+            return await request.json()
+        except JSONDecodeError:
+            return
