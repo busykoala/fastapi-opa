@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.1.0] - 2021-05-06
+
+- Allow custom injectables to enrich the payload sent to OPA.
+- Add GraphQLAnalysis to parse raw GraphQL payloads and add an injectable to
+  send additional data to OPA allowing fine-grained authorization policies.
+
 ## [1.0.1] - 2021-04-25
 
 - Remove uvicorn as a pkg dependency.
