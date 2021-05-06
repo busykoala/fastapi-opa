@@ -30,12 +30,12 @@ the user is allowed to get any information from the endpoint.
 ## Installation
 
 ```bash
-poetry add fastapi-opa
+poetry add [--extras "graphql"] fastapi-opa 
 ```
 
 ## How to get started
 
-Checkout the wiki for a complete environment setup with Keycloak and Open Policy Agent:  
+:bulb: Checkout the wiki for a complete environment setup with Keycloak and Open Policy Agent:  
 [Getting Started with FastAPI app with Authentication and Authorization](https://github.com/busykoala/fastapi-opa/wiki#dev-setup)
 
 The package provides a very easy way to integrate authentication and
@@ -152,8 +152,28 @@ easily implement it and inject it into OPAMiddleware
 (`fastapi_opa.auth.auth_interface.AuthInterface`), or you can open a pull
 request if you would like to contribute to the package.
 
+## Custom Payload Enrichment
+
+In `fastapi_opa.opa.opa_config.Injectable` an interface is provided to add
+more information to the payload sent to OPA.
+
+The injectables can be added to the `OPAConfig`. Let's look at an example:
+
+```python
+class FancyInjectable(Injectable):
+    async def extract(self, request: Request) -> List:
+        return ["some", "custom", "stuff"]
+
+fancy_inj = FancyInjectable("fancy_key")
+
+opa_config = OPAConfig(
+    authentication=oidc_auth, opa_host=opa_host, injectables=[fancy_inj]
+)
+```
+
+:bulb: For GraphQL there is a ready to use injectable in
+`fastapi_opa.opa.enrichment.graphql_enrichment.GraphQLInjectable`
+
 ## Roadmap
 
 - Add other authentication flows
-- Allow more flexible way of opa jwt enrichment
-- Implement GraphQL query parser as a jwt enrichment strategy
