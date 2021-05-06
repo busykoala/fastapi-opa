@@ -43,7 +43,9 @@ class GraphQLAnalysis:
         for operation_def in operation_defs:
             self.operations.append(
                 OperationData(
-                    name=operation_def.name.value,
+                    name=(
+                        operation_def.name.value if operation_def.name else ""
+                    ),
                     operation=operation_def.operation,
                     variables=self.extract_variables(
                         operation_def.variable_definitions
@@ -76,6 +78,8 @@ class GraphQLAnalysis:
         self, variable_definitions: List[VariableDefinition]
     ) -> Dict:
         variables = {}
+        if not variable_definitions:
+            return {}
         for var_def in variable_definitions:
             variables[var_def.variable.name.value] = self.deep_extract_type(
                 var_def.type
