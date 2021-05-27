@@ -14,10 +14,10 @@ def test_query_parsing(test_payload, expected):
     assert expected == gql_analysis.operations
 
 
-def test_gql_injection(gql_injected_client):
+async def test_gql_injection(gql_injected_client):
     with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
         payload = GQL_TEST_CASES[0][0]
-        gql_injected_client.get("/", json=payload)
+        await gql_injected_client.get("/", json=payload)
 
     expected_payload = {
         "stuff": "some info",

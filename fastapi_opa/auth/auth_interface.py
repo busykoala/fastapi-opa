@@ -13,27 +13,11 @@ class AuthInterface(ABC):
     """
 
     @abstractmethod
-    def authenticate(
-        self, *args: object, **kwargs: object
+    async def authenticate(
+        self, request: Request
     ) -> Union[RedirectResponse, Dict]:
         """The method returns a dictionary containing the valid and authorized
         users information or a redirect since some flows require calling a
         identity broker beforehand.
-        """
-        pass
-
-
-class OIDCAuthenticationInterface(AuthInterface):
-    """The interface provides the necessary interface for the oidc
-    authentication flow.
-    """
-
-    @abstractmethod
-    def authenticate(
-        self, connection: HTTPConnection
-    ) -> Union[RedirectResponse, Dict]:
-        """The method returns a dictionary containing the valid and authorized
-        users information or a redirect since OIDC requires to call the id
-        broker beforehand.
         """
         pass

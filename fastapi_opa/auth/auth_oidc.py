@@ -14,10 +14,10 @@ import jwt
 import requests
 from jwt.exceptions import DecodeError
 from jwt.exceptions import InvalidTokenError
-from starlette.requests import HTTPConnection
+from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
-from fastapi_opa.auth.auth_interface import OIDCAuthenticationInterface
+from fastapi_opa.auth.auth_interface import AuthInterface
 from fastapi_opa.auth.exceptions import OIDCException
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class OIDCConfig:
     get_user_info: bool = field(default=False)
 
 
-class OIDCAuthentication(OIDCAuthenticationInterface):
+class OIDCAuthentication(AuthInterface):
     def __init__(self, config: OIDCConfig) -> None:
         self.config = config
         if self.config.well_known_endpoint:
@@ -73,20 +73,20 @@ class OIDCAuthentication(OIDCAuthenticationInterface):
         if self.config.get_user_info and not self.userinfo_endpoint:
             raise OIDCException("Userinfo endpoint not provided")
 
-    def authenticate(
-        self, connection: HTTPConnection
+    async def authenticate(
+        self, request: Request
     ) -> Union[RedirectResponse, Dict]:
         callback_uri = urlunparse(
             [
-                connection.url.scheme,
-                connection.url.netloc,
-                connection.url.path,
+                request.url.scheme,
+                request.url.netloc,
+                request.url.path,
                 "",
                 "",
                 "",
             ]
         )
-        code = connection.query_params.get("code")
+        code = request.query_params.get("code")
 
         # redirect to id provider if code query-value is not present
         if not code:
