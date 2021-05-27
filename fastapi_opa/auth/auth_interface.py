@@ -3,7 +3,7 @@ from abc import abstractmethod
 from typing import Dict
 from typing import Union
 
-from starlette.requests import HTTPConnection
+from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
 
