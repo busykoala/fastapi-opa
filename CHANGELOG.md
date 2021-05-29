@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.2.0] - 2021-05-29
+
+- Add saml authentication as an authentication method.
+- Adapt authentication interface (backwards compatible) to allow async and
+  request usage within the authentication method.
+
 ## [1.1.0] - 2021-05-06
 
 - Allow custom injectables to enrich the payload sent to OPA.
