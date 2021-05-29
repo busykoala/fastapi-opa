@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from json.decoder import JSONDecodeError
@@ -29,8 +30,10 @@ class OPAMiddleware:
         # authenticate user or get redirect to identity provider
         try:
             user_info_or_auth_redirect = (
-                await self.config.authentication.authenticate(request)
+                self.config.authentication.authenticate(request)
             )
+            if asyncio.iscoroutine(user_info_or_auth_redirect):
+                user_info_or_auth_redirect = await user_info_or_auth_redirect
         except AuthenticationException:
             logger.error("AuthenticationException raised on login")
             return await self.get_unauthorized_response(scope, receive, send)

@@ -59,6 +59,7 @@ class SAMLAuthentication(AuthInterface):
             "samlNameIdSPNameQualifier": auth.get_nameid_spnq(),
             "samlSessionIndex": auth.get_session_index(),
         }
+
         self_url = OneLogin_Saml2_Utils.get_self_url(request_args)
         if "RelayState" in request_args.get("post_data") and self_url.rstrip(
             "/"

@@ -1,5 +1,6 @@
 from typing import Dict
 
+import nest_asyncio
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -9,6 +10,8 @@ from fastapi_opa import OPAMiddleware
 from fastapi_opa.opa.enrichment.graphql_enrichment import GraphQLInjectable
 from tests.utils import AuthenticationDummy
 from tests.utils import OPAInjectableExample
+
+nest_asyncio.apply()
 
 
 @pytest.fixture
@@ -51,7 +54,7 @@ def injected_client():
 
 
 @pytest.fixture
-def gql_injected_client():
+async def gql_injected_client():
     opa_host = "http://localhost:8181"
     oidc_auth = AuthenticationDummy()
     injectable = GraphQLInjectable("gql_injectable")
@@ -63,6 +66,7 @@ def gql_injected_client():
     app.add_middleware(OPAMiddleware, config=opa_config)
 
     @app.get("/")
+    @pytest.mark.asyncio
     async def root() -> Dict:
         return {
             "msg": "success",

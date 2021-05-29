@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from mock import patch
 
 from fastapi_opa import OPAConfig
@@ -13,11 +14,11 @@ def test_opa_config():
     assert "localhost/v1/data/httpapi/authz" == opa_conf.opa_url
 
 
-async def test_successful_opa_flow(client):
+def test_successful_opa_flow(client):
     with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
         req.return_value.status_code = 200
         req.return_value.json = lambda: {"result": {"allow": True}}
-        response = await client.get("/")
+        response = client.get("/")
 
     url = req.call_args_list[0][0][0]
     payload = json.loads(req.call_args_list[0][1].get("data")).get("input")
@@ -36,11 +37,12 @@ async def test_successful_opa_flow(client):
     assert {"msg": "success"} == response.json()
 
 
+@pytest.mark.asyncio
 async def test_not_allowing_opa_flow(client):
     with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
         req.return_value.status_code = 200
         req.return_value.json = lambda: {"result": {"allow": False}}
-        response = await client.get("/")
+        response = client.get("/")
 
     url = req.call_args_list[0][0][0]
     payload = json.loads(req.call_args_list[0][1].get("data")).get("input")
@@ -59,10 +61,11 @@ async def test_not_allowing_opa_flow(client):
     assert {"message": "Unauthorized"} == response.json()
 
 
+@pytest.mark.asyncio
 async def test_function_injection(injected_client):
     with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
         payload = {"some": "data"}
-        await injected_client.get("/", json=payload)
+        injected_client.get("/", json=payload)
 
     expected_payload = {
         "stuff": "some info",

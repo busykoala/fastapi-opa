@@ -295,7 +295,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "importlib-metadata"
-version = "4.3.0"
+version = "4.3.1"
 description = "Read metadata from Python packages"
 category = "dev"
 optional = false
@@ -383,6 +383,14 @@ description = "Experimental type system extensions for programs checked with the
 category = "dev"
 optional = false
 python-versions = "*"
+
+[[package]]
+name = "nest-asyncio"
+version = "1.5.1"
+description = "Patch asyncio to allow nested event loops"
+category = "dev"
+optional = false
+python-versions = ">=3.5"
 
 [[package]]
 name = "packaging"
@@ -533,6 +541,20 @@ toml = "*"
 
 [package.extras]
 testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "requests", "xmlschema"]
+
+[[package]]
+name = "pytest-asyncio"
+version = "0.15.1"
+description = "Pytest support for asyncio."
+category = "dev"
+optional = false
+python-versions = ">= 3.6"
+
+[package.dependencies]
+pytest = ">=5.4.0"
+
+[package.extras]
+testing = ["coverage", "hypothesis (>=5.7.1)"]
 
 [[package]]
 name = "pytest-mock"
@@ -707,7 +729,7 @@ socks = ["PySocks (>=1.5.6,<1.5.7 || >1.5.7,<2.0)"]
 
 [[package]]
 name = "xmlsec"
-version = "1.3.10"
+version = "1.3.11"
 description = "Python bindings for the XML Security Library"
 category = "main"
 optional = true
@@ -735,7 +757,7 @@ saml = ["python3-saml", "python-multipart"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6"
-content-hash = "a9d5ed91c96e39fd606e2c60e874970ce217f75ea6a34688420174f79bbc3c9b"
+content-hash = "b9d797d9bb98ccbc84d1a8201f791e3998f0109fde9c559d28b341752acd88db"
 
 [metadata.files]
 aniso8601 = [
@@ -879,8 +901,8 @@ idna = [
     {file = "idna-2.10.tar.gz", hash = "sha256:b307872f855b18632ce0c21c5e45be78c0ea7ae4c15c828c20788b26921eb3f6"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-4.3.0-py3-none-any.whl", hash = "sha256:c8b9a7c6000baa7adf7abcd2c41db11f172bcb5d6e448c73c2407dbc7e7e2af3"},
-    {file = "importlib_metadata-4.3.0.tar.gz", hash = "sha256:c4646abbce80191bb548636f846e353ff1edc46a06bc536ea0a60d53211dc690"},
+    {file = "importlib_metadata-4.3.1-py3-none-any.whl", hash = "sha256:c2e27fa8b6c8b34ebfcd4056ae2ca290e36250d1fbeceec85c1c67c711449fac"},
+    {file = "importlib_metadata-4.3.1.tar.gz", hash = "sha256:2d932ea08814f745863fd20172fe7de4794ad74567db78f2377343e24520a5b6"},
 ]
 iniconfig = [
     {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},
@@ -954,6 +976,10 @@ mypy-extensions = [
     {file = "mypy_extensions-0.4.3-py2.py3-none-any.whl", hash = "sha256:090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d"},
     {file = "mypy_extensions-0.4.3.tar.gz", hash = "sha256:2d82818f5bb3e369420cb3c4060a7970edba416647068eb4c5343488a6c604a8"},
 ]
+nest-asyncio = [
+    {file = "nest_asyncio-1.5.1-py3-none-any.whl", hash = "sha256:76d6e972265063fe92a90b9cc4fb82616e07d586b346ed9d2c89a4187acea39c"},
+    {file = "nest_asyncio-1.5.1.tar.gz", hash = "sha256:afc5a1c515210a23c461932765691ad39e8eba6551c055ac8d5546e69250d0aa"},
+]
 packaging = [
     {file = "packaging-20.9-py2.py3-none-any.whl", hash = "sha256:67714da7f7bc052e064859c05c595155bd1ee9f69f76557e21f051443c20947a"},
     {file = "packaging-20.9.tar.gz", hash = "sha256:5b327ac1320dc863dca72f4514ecc086f31186744b84a230374cc1fd776feae5"},
@@ -1024,6 +1050,10 @@ pyparsing = [
 pytest = [
     {file = "pytest-6.2.4-py3-none-any.whl", hash = "sha256:91ef2131a9bd6be8f76f1f08eac5c5317221d6ad1e143ae03894b862e8976890"},
     {file = "pytest-6.2.4.tar.gz", hash = "sha256:50bcad0a0b9c5a72c8e4e7c9855a3ad496ca6a881a3641b4260605450772c54b"},
+]
+pytest-asyncio = [
+    {file = "pytest-asyncio-0.15.1.tar.gz", hash = "sha256:2564ceb9612bbd560d19ca4b41347b54e7835c2f792c504f698e05395ed63f6f"},
+    {file = "pytest_asyncio-0.15.1-py3-none-any.whl", hash = "sha256:3042bcdf1c5d978f6b74d96a151c4cfb9dcece65006198389ccd7e6c60eb1eea"},
 ]
 pytest-mock = [
     {file = "pytest-mock-3.6.1.tar.gz", hash = "sha256:40217a058c52a63f1042f0784f62009e976ba824c418cced42e88d5f40ab0e62"},
@@ -1185,17 +1215,17 @@ urllib3 = [
     {file = "urllib3-1.26.5.tar.gz", hash = "sha256:a7acd0977125325f516bda9735fa7142b909a8d01e8b2e4c8108d0984e6e0098"},
 ]
 xmlsec = [
-    {file = "xmlsec-1.3.10-cp35-cp35m-win32.whl", hash = "sha256:bf3c62d154f2222caf56d897ddfd53fd0aef560d5a2202447d90e015301a0a10"},
-    {file = "xmlsec-1.3.10-cp35-cp35m-win_amd64.whl", hash = "sha256:17d2e66d4e3e601d210eed936b53c3eb44cddaef62f60b5c6ad5c18e948d926c"},
-    {file = "xmlsec-1.3.10-cp36-cp36m-win32.whl", hash = "sha256:fe6a5f05aba3ff47e105a308482b68f8b0fd80656eb1456a9c1e4de47d2c580f"},
-    {file = "xmlsec-1.3.10-cp36-cp36m-win_amd64.whl", hash = "sha256:b380f3ebc042f71afab057632481d06e06f1ba4f90047d91ca92612a7d3d487b"},
-    {file = "xmlsec-1.3.10-cp37-cp37m-win32.whl", hash = "sha256:9d52b2b15d42292725e4f9d8a5b040e39cba0a9cd58059ac951e7310d6340bb9"},
-    {file = "xmlsec-1.3.10-cp37-cp37m-win_amd64.whl", hash = "sha256:806855d505da24aeb77758a6f373b1473e5ed63bdbe346af90cc6d2b053e4716"},
-    {file = "xmlsec-1.3.10-cp38-cp38-win32.whl", hash = "sha256:8746dd992aaec06ed8ff1615f4a8e2a32258e8af38f9a9f8acf3ee1fb34a5da6"},
-    {file = "xmlsec-1.3.10-cp38-cp38-win_amd64.whl", hash = "sha256:2bc1b871b49d6580779805a4a1c2d835e834a2fa614fe40cf71931d11a8279cf"},
-    {file = "xmlsec-1.3.10-cp39-cp39-win32.whl", hash = "sha256:72af9a5a747a5fe6e425d2be10daa43d18307dbe03498df3820fc3cd93daa148"},
-    {file = "xmlsec-1.3.10-cp39-cp39-win_amd64.whl", hash = "sha256:be0f475edd8e9c98f57449c97839f6a81946e79e4cccb81e4b5196a2cc40e044"},
-    {file = "xmlsec-1.3.10.tar.gz", hash = "sha256:52eded125c0d1ab72125105ef061370c6b06ab9bd37e29a61bc2f8a61205bae4"},
+    {file = "xmlsec-1.3.11-cp35-cp35m-win32.whl", hash = "sha256:8922fba55a060ee81de4a7f5efc593c5bf121047763aecf0eead02e061c9d2db"},
+    {file = "xmlsec-1.3.11-cp35-cp35m-win_amd64.whl", hash = "sha256:705ab5b848afdf3a5c78b1322276054c885f44dc51601e14cb883a9c86cbe20f"},
+    {file = "xmlsec-1.3.11-cp36-cp36m-win32.whl", hash = "sha256:eadff662d89c80db409c69d82eb3e695e16d4a5e8ab56b5b22670a54e9c6ff20"},
+    {file = "xmlsec-1.3.11-cp36-cp36m-win_amd64.whl", hash = "sha256:86d54b93f8278e2f0c504d0744e39a483c1c7ce9993f2ca70184cc7770faa982"},
+    {file = "xmlsec-1.3.11-cp37-cp37m-win32.whl", hash = "sha256:dea5bef9b5830c36ccb7a68a0d94d49eaea4d03fbbd04179652bf661b7e6e30f"},
+    {file = "xmlsec-1.3.11-cp37-cp37m-win_amd64.whl", hash = "sha256:ee233d0bc27fb8f447ca2622b0de2ac2df45b8795f02ef263825912011fe4fe9"},
+    {file = "xmlsec-1.3.11-cp38-cp38-win32.whl", hash = "sha256:c7b49d4fce83186b89f7ce6cec765245d36a70d0acc2f3ed0ba95c735b3667da"},
+    {file = "xmlsec-1.3.11-cp38-cp38-win_amd64.whl", hash = "sha256:23f209260b37bdc2fd96af837494c47dd1e67964f077442b63acd83c0f62e212"},
+    {file = "xmlsec-1.3.11-cp39-cp39-win32.whl", hash = "sha256:843d10bba4c480609da74ee11fff1ee0fc1c12821c656979f12a7a4ecb043e03"},
+    {file = "xmlsec-1.3.11-cp39-cp39-win_amd64.whl", hash = "sha256:4fb38ab0bf3e47cbae136119674a869e09d61c939b510350f369c8ac46087373"},
+    {file = "xmlsec-1.3.11.tar.gz", hash = "sha256:cd2eaaff7f31784a07dd99ce81fa767313df3ba1834faa4143ee2c07000cac7a"},
 ]
 zipp = [
     {file = "zipp-3.4.1-py3-none-any.whl", hash = "sha256:51cb66cc54621609dd593d1787f286ee42a5c0adbb4b29abea5a63edc3e03098"},
