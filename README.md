@@ -19,7 +19,7 @@
 to your application within minutes using open policy agent and your favourite
 identity provider.
 
-![Flow Diagram](./assets/diagram.png)
+![Flow Diagram](https://raw.githubusercontent.com/busykoala/fastapi-opa/master/assets/diagram.png)
 
 When a user tries to get a response from an endpoint he/she will be redirected
 to the identity provider for authorization.
