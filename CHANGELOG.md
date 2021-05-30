@@ -1,5 +1,9 @@
 # Change Log
 
+## [1.2.1] - 2021-05-30
+
+- Add readme flow diagram with absolute link to be displayed on pypi.
+
 ## [1.2.0] - 2021-05-29
 
 - Add saml authentication as an authentication method.
