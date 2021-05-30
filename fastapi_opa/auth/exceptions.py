@@ -8,3 +8,9 @@ class OIDCException(AuthenticationException):
     """OIDC authentication flow exception."""
 
     pass
+
+
+class SAMLException(AuthenticationException):
+    """SAML authentication flow exception."""
+
+    pass

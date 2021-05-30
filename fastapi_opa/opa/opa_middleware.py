@@ -1,10 +1,10 @@
+import asyncio
 import json
 import logging
 from json.decoder import JSONDecodeError
 
 import requests
 from fastapi.responses import JSONResponse
-from starlette.requests import HTTPConnection
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette.types import ASGIApp
@@ -26,13 +26,14 @@ class OPAMiddleware:
     async def __call__(
         self, scope: Scope, receive: Receive, send: Send
     ) -> None:
+        request = Request(scope, receive, send)
         # authenticate user or get redirect to identity provider
         try:
             user_info_or_auth_redirect = (
-                self.config.authentication.authenticate(  # noqa
-                    HTTPConnection(scope)
-                )
+                self.config.authentication.authenticate(request)
             )
+            if asyncio.iscoroutine(user_info_or_auth_redirect):
+                user_info_or_auth_redirect = await user_info_or_auth_redirect
         except AuthenticationException:
             logger.error("AuthenticationException raised on login")
             return await self.get_unauthorized_response(scope, receive, send)
@@ -45,7 +46,6 @@ class OPAMiddleware:
         # Check OPA decision for info provided in user_info
         is_authorized = False
         # Enrich user_info if injectables are provided
-        request = Request(scope, receive, send)
         if self.config.injectables:
             for injectable in self.config.injectables:
                 user_info_or_auth_redirect[

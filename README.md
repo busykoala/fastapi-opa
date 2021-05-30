@@ -1,25 +1,25 @@
 # Open Policy Agent Middleware for FastAPI
 
+## Table of Contents
+- [What does fastapi-opa do](#about)
+- [Installation](#installation)
+- [How to get started](#getting-started)
+- [Open Policy Agent](#opa)
+- [Authentication Flow](#auth-flow)
+  - [OIDC Authentication](#oidc-auth)
+  - [SAML Authentication](#saml-auth)
+- [Custom Payload Enrichment](#custom-payload-enrichment)
+  - [Graphql Enrichment](#gql-enrichment)
+
+<a name="about"/>
+
+## What does fastapi-opa do
+
 `fastapi-opa` is an extension to FastAPI that allows you to add a login flow
 to your application within minutes using open policy agent and your favourite
 identity provider.
 
-```bash
-─▄████▄▄░
-▄▀█▀▐└─┐░░         FastAPI App
-█▄▐▌▄█▄┘██  ---->  @app.get("/")
-└▄▄▄▄▄┘███         async def root():  
-██▒█▒███▀              return {}
-   User                   |                   Identity Provider
-    |       ------------------------------>    (e.g. Keycloak)
-    |       <------------------------------           |
-    |       ---->         |                           |
-    |                     |           ---->           |
-    |                     |           <----           |
-    |                     |           ---------------------------------->  Open Policy Agent
-    |                     |           <---------------------------------- 
-    |       <-----        |
-```
+![Flow Diagram](./assets/diagram.png)
 
 When a user tries to get a response from an endpoint he/she will be redirected
 to the identity provider for authorization.
@@ -27,11 +27,15 @@ After the authentication the app validates the token provided. Once it was
 validated the user information is used to get an OPA decision whether
 the user is allowed to get any information from the endpoint.
 
+<a name="installation"/>
+
 ## Installation
 
 ```bash
-poetry add [--extras "graphql"] fastapi-opa 
+poetry add [--extras "graphql"] [--extras "saml"] fastapi-opa 
 ```
+
+<a name="getting-started"/>
 
 ## How to get started
 
@@ -75,6 +79,8 @@ async def root() -> Dict:
         "msg": "success",
     }
 ```
+
+<a name="opa"/>
 
 ## Open Policy Agent
 
@@ -141,16 +147,56 @@ allow {
 }
 ```
 
+<a name="auth-flow"/>
+
 ## Authentication Flow
 
-These flows are implemented:
-
-- OpenID Connect
-
-If your favourite flow is not provided yet, there is an interface provided to
-easily implement it and inject it into OPAMiddleware
+There is an interface provided to easily implement the desired authentication
+flow and inject it into OPAMiddleware
 (`fastapi_opa.auth.auth_interface.AuthInterface`), or you can open a pull
 request if you would like to contribute to the package.
+
+Also there are implementations ready to use.
+
+<a name="oidc-auth"/>
+
+### OIDC Authentication
+
+The example in [How to get started](#getting-started) provides an example for
+the implementation of the OIDC Authentication.
+
+<a name="saml-auth"/>
+
+### SAML Authentication
+
+For the saml implementation create your certs using
+`openssl req -new -x509 -days 3652 -nodes -out sp.crt -keyout sp.key` and
+add the keys to the sp section of your `settings.json`. Checkout the test
+settings to get an idea (`tests/test_data/saml/*.json`). The path to your
+own `settings.json` and `advanced_settings.json` has to be provided in the
+`SAMLAuthConfig` like in the example below (do not use the test data in
+production).
+
+```python
+from fastapi_opa import OPAConfig
+from fastapi_opa.auth.auth_saml import SAMLAuthentication
+from fastapi_opa.auth.auth_saml import SAMLConfig
+
+opa_host = "http://localhost:8181"
+
+saml_config = SAMLConfig(settings_directory="./tests/test_data/saml")
+saml_auth = SAMLAuthentication(saml_config)
+
+opa_config = OPAConfig(authentication=saml_auth, opa_host=opa_host)
+```
+
+The cert has to be uploaded to your identity provider. Using Keycloak as an
+idp you need to configure `encrypt assertion`, `client signature required`,
+`force POST bindings` on creating the client.
+Also configure: `Client Scopes` -> `role_list (saml)` -> `Mappers tab` ->
+`role list` -> `Single Role Attribute`
+
+<a name="custom-payload-enrichment"/>
 
 ## Custom Payload Enrichment
 
@@ -171,9 +217,10 @@ opa_config = OPAConfig(
 )
 ```
 
-:bulb: For GraphQL there is a ready to use injectable in
+
+<a name="gql-enrichment"/>
+
+### Graphql Enrichment
+
+For GraphQL there is a ready to use injectable in
 `fastapi_opa.opa.enrichment.graphql_enrichment.GraphQLInjectable`
-
-## Roadmap
-
-- Add other authentication flows
