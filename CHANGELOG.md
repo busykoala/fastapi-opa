@@ -1,5 +1,9 @@
 # Change Log
 
+## [1.2.2] - 2021-07-30
+
+- Add slo and sls methods for saml_auth.
+
 ## [1.2.1] - 2021-05-30
 
 - Add readme flow diagram with absolute link to be displayed on pypi.
