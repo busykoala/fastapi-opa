@@ -141,7 +141,7 @@ def construct_jwt(
     headers: Optional[Dict] = None,
 ):
     iat_timestamp = datetime.datetime.utcnow().timestamp()
-    delta_day = 1000000   # Unit: day
+    delta_days = 1000000
     # This or patch jwt.decode
     if not msg:
         msg = {
@@ -150,7 +150,7 @@ def construct_jwt(
             "jti": "68f7cf57-110d-4cbf-9f29-0f5ad4c90328",
             "sub": "test-sub",
             "iat": int(iat_timestamp),
-            "exp": int(iat_timestamp + 3600 * 24 * delta_day),
+            "exp": int(iat_timestamp + 3600 * 24 * delta_days),
         }
     if algorithm == "HS256":
         return jwt.encode(msg, "secret", algorithm=algorithm), msg
