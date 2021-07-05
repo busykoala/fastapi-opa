@@ -44,7 +44,7 @@ class SAMLAuthentication(AuthInterface):
         elif 'sso2' in request.query_params:
             logger.debug(datetime.utcnow(), '--sso2--')
             return_to = '%sattrs/' % request.base_url
-            return RedirectResponse(auth.login(return_to))
+            return await self.single_sign_on(auth, return_to)
         elif "acs" in request.query_params:
             logger.debug(datetime.utcnow(), '--acs--')
             return await self.assertion_consumer_service(auth, request_args, request)
@@ -93,8 +93,8 @@ class SAMLAuthentication(AuthInterface):
                         spnq=name_id_spnq))
 
     @staticmethod
-    async def single_sign_on(auth: OneLogin_Saml2_Auth) -> RedirectResponse:
-        redirect_url = auth.login()
+    async def single_sign_on(auth: OneLogin_Saml2_Auth, url: str = None) -> RedirectResponse:
+        redirect_url = auth.login(url)
         return RedirectResponse(redirect_url)
 
     @staticmethod
