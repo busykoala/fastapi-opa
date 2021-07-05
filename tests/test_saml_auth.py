@@ -27,6 +27,10 @@ async def test_assertion_consumer_service(saml_util_mock):
     saml_util_mock.get_self_url.return_value = "http://sp.com"
     saml_conf = SAMLConfig(settings_directory="./tests/test_data/saml")
     saml_auth = SAMLAuthentication(saml_conf)
+
+    request_mock = Mock()
+    request_mock.session.__setitem__ = Mock()
+
     saml_auth_mock = Mock()
     saml_auth_mock.get_errors.return_value = []
     saml_auth_mock.get_attributes.return_value = {
@@ -48,7 +52,7 @@ async def test_assertion_consumer_service(saml_util_mock):
     saml_auth_mock.get_session_index.return_value = "8167416b-6a10-4a4c-889c-7574074e3fc5::f1eaf88b-2bb9-4d2e-8d3d-39587ba1ef37"  # noqa
 
     response = await saml_auth.assertion_consumer_service(
-        saml_auth_mock, {"post_data": []}
+        saml_auth_mock, {"post_data": []}, request_mock
     )
     expected = {
         "samlUserdata": {
@@ -67,4 +71,6 @@ async def test_assertion_consumer_service(saml_util_mock):
         "samlNameIdSPNameQualifier": None,
         "samlSessionIndex": "8167416b-6a10-4a4c-889c-7574074e3fc5::f1eaf88b-2bb9-4d2e-8d3d-39587ba1ef37",  # noqa
     }
+
+    request_mock.session.__setitem__.assert_called()
     assert expected == response

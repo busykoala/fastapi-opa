@@ -1,4 +1,5 @@
 import logging
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -32,15 +33,11 @@ class SAMLAuthentication(AuthInterface):
         request_args = await self.prepare_request(request)
         auth = await self.init_saml_auth(request_args)
 
-        if "acs" in request.query_params:
-            logger.debug(datetime.utcnow(), '--acs--')
-            return await self.assertion_consumer_service(auth, request_args)
-        # potentially extend with logout here
-        elif 'sso' in request.query_params:
+        if 'sso' in request.query_params:
             logger.debug(datetime.utcnow(), '--sso--')
             return await self.single_sign_on(auth)
             # TODO: check below code
-            # If AuthNRequest ID need to be stored in order to later validate it, do instead
+            # If AuthNRequest ID need to be stored in order to later validate it, # do instead
             # sso_built_url = auth.login()
             # request.session['AuthNRequestID'] = auth.get_last_request_id()
             # return redirect(sso_built_url)
@@ -48,9 +45,18 @@ class SAMLAuthentication(AuthInterface):
             logger.debug(datetime.utcnow(), '--sso2--')
             return_to = '%sattrs/' % request.base_url
             return RedirectResponse(auth.login(return_to))
+        elif "acs" in request.query_params:
+            logger.debug(datetime.utcnow(), '--acs--')
+            return await self.assertion_consumer_service(auth, request_args, request)
+        # potentially extend with logout here
         elif 'slo' in request.query_params:
             logger.debug(datetime.utcnow(), '--slo--')
             return await self.single_log_out(auth)
+        elif 'example-read-cookie' in request.query_params:
+            logger.debug('example-read-cookie')
+            userdata = request.session.get('saml_session')
+            logger.debug(json.loads(userdata))
+
         # TODO: handle sls
         # elif 'sls' in request.query_params:
         #     logger.debug(datetime.utcnow(), '--sls--')
@@ -93,7 +99,7 @@ class SAMLAuthentication(AuthInterface):
 
     @staticmethod
     async def assertion_consumer_service(
-        auth: OneLogin_Saml2_Auth, request_args: Dict
+        auth: OneLogin_Saml2_Auth, request_args: Dict, request: Request
     ) -> Union[RedirectResponse, Dict]:
         auth.process_response()
         errors = auth.get_errors()
@@ -117,8 +123,8 @@ class SAMLAuthentication(AuthInterface):
                     request_args.get("post_data", {}).get("RelayState")
                 )
             )
-        else:
-            return userdata
+        request.session['saml_session'] = json.dumps(userdata)
+        return userdata
 
     @staticmethod
     async def prepare_request(request: Request):
