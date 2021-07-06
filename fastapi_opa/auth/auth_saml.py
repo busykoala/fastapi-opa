@@ -54,22 +54,24 @@ class SAMLAuthentication(AuthInterface):
             return await self.single_log_out(auth)
 
         # TODO: handle sls
-        # elif 'sls' in request.query_params:
-        #     logger.debug(datetime.utcnow(), '--sls--')
-        #     request_id = None
-        #     if 'LogoutRequestID' in request.query_params['post_data']:
-        #         request_id = request.query_params['post_data']['LogoutRequestID']
-        #     # TODO: not sure how to handle session here
-        #     dscb = lambda request.session['saml_session']: None
-        #     url = auth.process_slo(request_id=request_id, delete_session_cb=dscb)
-        #     errors = auth.get_errors()
-        #     if len(errors) == 0:
-        #         if url is not None:
-        #             return RedirectResponse(url)
-        #         else:
-        #             success_slo = True
-        #     elif auth.get_settings().is_debug_active():
-        #         error_reason = auth.get_last_error_reason()
+        elif 'sls' in request.query_params:
+            logger.debug(datetime.utcnow(), '--sls--')
+            request_id = None
+            if 'LogoutRequestID' in request.query_params['post_data']:
+                request_id = request.query_params['post_data']['LogoutRequestID']
+
+            # TODO: there might have better way
+            def request_session_flush(request):
+                if request.session.get('saml_session'):
+                    request.session['saml_session'] = None
+                return request
+            dscb = request_session_flush(request)
+            url = auth.process_slo(request_id=request_id, delete_session_cb=dscb)
+            errors = auth.get_errors()
+            if len(errors) == 0:
+                if url is not None:
+                    return RedirectResponse(url)
+
         return await self.single_sign_on(auth)
 
     async def init_saml_auth(self, request_args: Dict) -> OneLogin_Saml2_Auth:
