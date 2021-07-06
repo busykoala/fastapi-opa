@@ -1,5 +1,5 @@
-import logging
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -52,19 +52,15 @@ class SAMLAuthentication(AuthInterface):
         elif 'slo' in request.query_params:
             logger.debug(datetime.utcnow(), '--slo--')
             return await self.single_log_out(auth)
-        elif 'example-read-cookie' in request.query_params:
-            logger.debug('example-read-cookie')
-            userdata = request.session.get('saml_session')
-            logger.debug(json.loads(userdata))
 
         # TODO: handle sls
         # elif 'sls' in request.query_params:
         #     logger.debug(datetime.utcnow(), '--sls--')
         #     request_id = None
         #     if 'LogoutRequestID' in request.query_params['post_data']:
-        #         request_id = req_args['post_data']['LogoutRequestID']
+        #         request_id = request.query_params['post_data']['LogoutRequestID']
         #     # TODO: not sure how to handle session here
-        #     dscb = lambda: request.session.flush()
+        #     dscb = lambda request.session['saml_session']: None
         #     url = auth.process_slo(request_id=request_id, delete_session_cb=dscb)
         #     errors = auth.get_errors()
         #     if len(errors) == 0:
