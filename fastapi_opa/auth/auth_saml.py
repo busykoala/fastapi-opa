@@ -36,42 +36,24 @@ class SAMLAuthentication(AuthInterface):
         if 'sso' in request.query_params:
             logger.debug(datetime.utcnow(), '--sso--')
             return await self.single_sign_on(auth)
-            # TODO: check below code
-            # If AuthNRequest ID need to be stored in order to later validate it, # do instead
-            # sso_built_url = auth.login()
-            # request.session['AuthNRequestID'] = auth.get_last_request_id()
-            # return redirect(sso_built_url)
+
         elif 'sso2' in request.query_params:
             logger.debug(datetime.utcnow(), '--sso2--')
             return_to = '%sattrs/' % request.base_url
             return await self.single_sign_on(auth, return_to)
+
         elif "acs" in request.query_params:
             logger.debug(datetime.utcnow(), '--acs--')
             return await self.assertion_consumer_service(auth, request_args, request)
-        # potentially extend with logout here
+
         elif 'slo' in request.query_params:
             logger.debug(datetime.utcnow(), '--slo--')
             del request.session['saml_session']
             return await self.single_log_out(auth)
 
-        # TODO: handle sls
         elif 'sls' in request.query_params:
             logger.debug(datetime.utcnow(), '--sls--')
-            request_id = None
-            if 'LogoutRequestID' in request.query_params['post_data']:
-                request_id = request.query_params['post_data']['LogoutRequestID']
-
-            # TODO: there might have better way
-            def request_session_flush(request):
-                if request.session.get('saml_session'):
-                    request.session['saml_session'] = None
-                return request
-            dscb = request_session_flush(request)
-            url = auth.process_slo(request_id=request_id, delete_session_cb=dscb)
-            errors = auth.get_errors()
-            if len(errors) == 0:
-                if url is not None:
-                    return RedirectResponse(url)
+            return await self.single_log_out_from_IdP(auth, request)
 
         return await self.single_sign_on(auth)
 
@@ -79,6 +61,28 @@ class SAMLAuthentication(AuthInterface):
         return OneLogin_Saml2_Auth(
             request_args, custom_base_path=self.custom_folder.as_posix()
         )
+
+    @staticmethod
+    async def single_log_out_from_IdP(auth: OneLogin_Saml2_Auth, request: Request) -> \
+        Union[RedirectResponse, Dict]:
+        post_data = request.query_params['post_data']
+        request_id = post_data.get('LogoutRequestID', None)
+
+        def request_session_flush(request):
+            if request.session.get('saml_session'):
+                request.session['saml_session'] = None
+
+        dscb = request_session_flush(request)
+        url = auth.process_slo(request_id=request_id, delete_session_cb=dscb)
+        errors = auth.get_errors()
+        if len(errors) == 0:
+            if url is not None:
+                return RedirectResponse(url)
+            else:
+                return SAMLAuthentication.single_sign_on(auth)
+        else:
+            error_reason = auth.get_last_error_reason()
+            return {'error': error_reason}
 
     @staticmethod
     async def single_log_out(auth: OneLogin_Saml2_Auth) -> RedirectResponse:
