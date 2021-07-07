@@ -51,6 +51,7 @@ class SAMLAuthentication(AuthInterface):
         # potentially extend with logout here
         elif 'slo' in request.query_params:
             logger.debug(datetime.utcnow(), '--slo--')
+            del request.session['saml_session']
             return await self.single_log_out(auth)
 
         # TODO: handle sls

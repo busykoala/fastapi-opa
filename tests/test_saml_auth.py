@@ -101,6 +101,7 @@ async def test_single_log_out():
 
     saml_auth_mock = Mock()
     saml_auth_mock.get_slo_url.return_value = "http://idp.com"
+    saml_auth_mock.get_self_url_no_query.return_value = "http://idp.com"
     saml_auth_mock.get_nameid.return_value = "alice"
     saml_auth_mock.get_nameid_format.return_value = (
         "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
@@ -113,5 +114,4 @@ async def test_single_log_out():
         saml_auth_mock
     )
     assert isinstance(response, RedirectResponse)
-    # TODO:
-    assert response
+    assert response.status_code == 307
