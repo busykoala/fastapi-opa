@@ -65,8 +65,8 @@ class SAMLAuthentication(AuthInterface):
     @staticmethod
     async def single_log_out_from_IdP(auth: OneLogin_Saml2_Auth, request: Request) -> \
         Union[RedirectResponse, Dict]:
-        post_data = request.query_params['post_data']
-        request_id = post_data.get('LogoutRequestID', None)
+        data = request.query_params
+        request_id = data.get('post_data').get('LogoutRequestID', None)
 
         def request_session_flush(request):
             if request.session.get('saml_session'):
@@ -79,7 +79,7 @@ class SAMLAuthentication(AuthInterface):
             if url is not None:
                 return RedirectResponse(url)
             else:
-                return SAMLAuthentication.single_sign_on(auth)
+                return await SAMLAuthentication.single_sign_on(auth)
         else:
             error_reason = auth.get_last_error_reason()
             return {'error': error_reason}
