@@ -48,7 +48,8 @@ class SAMLAuthentication(AuthInterface):
 
         elif 'slo' in request.query_params:
             logger.debug(datetime.utcnow(), '--slo--')
-            del request.session['saml_session']
+            if request.session.get('saml_session'):
+                del request.session['saml_session']
             return await self.single_log_out(auth)
 
         elif 'sls' in request.query_params:
