@@ -1,7 +1,6 @@
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Dict
 from typing import Union
@@ -34,27 +33,25 @@ class SAMLAuthentication(AuthInterface):
         auth = await self.init_saml_auth(request_args)
 
         if 'sso' in request.query_params:
-            logger.debug(datetime.utcnow(), '--sso--')
+            logger.debug('--sso--')
             return await self.single_sign_on(auth)
 
         elif 'sso2' in request.query_params:
-            logger.debug(datetime.utcnow(), '--sso2--')
+            logger.debug('--sso2--')
             return_to = '%sattrs/' % request.base_url
             return await self.single_sign_on(auth, return_to)
 
         elif "acs" in request.query_params:
-            logger.debug(datetime.utcnow(), '--acs--')
+            logger.debug('--acs--')
             return await self.assertion_consumer_service(auth, request_args, request)
 
         elif 'slo' in request.query_params:
-            logger.debug(datetime.utcnow(), '--slo--')
-            if request.session.get('saml_session'):
-                del request.session['saml_session']
+            logger.debug('--slo--')
             return await self.single_log_out(auth)
 
         elif 'sls' in request.query_params:
-            logger.debug(datetime.utcnow(), '--sls--')
-            return await self.single_log_out_from_IdP(auth, request)
+            logger.debug('--sls--')
+            return await self.single_log_out_from_IdP(request)
 
         return await self.single_sign_on(auth)
 
@@ -64,26 +61,21 @@ class SAMLAuthentication(AuthInterface):
         )
 
     @staticmethod
-    async def single_log_out_from_IdP(auth: OneLogin_Saml2_Auth, request: Request) -> \
+    async def single_log_out_from_IdP(request: Request) -> \
         Union[RedirectResponse, Dict]:
-        data = request.query_params
-        request_id = data.get('post_data').get('LogoutRequestID', None)
-
-        def request_session_flush(request):
-            if request.session.get('saml_session'):
-                request.session['saml_session'] = None
-
-        dscb = request_session_flush(request)
-        url = auth.process_slo(request_id=request_id, delete_session_cb=dscb)
+        req_args = await SAMLAuthentication.prepare_request(request)
+        req_args['get_data'] = {'SAMLResponse': request.query_params.get('SAMLResponse')}
+        auth = await SAMLAuthentication.init_saml_auth(req_args)
+        dscb = lambda: request.session.clear()
+        url = auth.process_slo(delete_session_cb=dscb)
         errors = auth.get_errors()
         if len(errors) == 0:
             if url is not None:
                 return RedirectResponse(url)
             else:
-                return await SAMLAuthentication.single_sign_on(auth)
+                return {'success_slo': True}
         else:
-            error_reason = auth.get_last_error_reason()
-            return {'error': error_reason}
+            return {'error': auth.get_last_error_reason()}
 
     @staticmethod
     async def single_log_out(auth: OneLogin_Saml2_Auth) -> RedirectResponse:
@@ -117,6 +109,7 @@ class SAMLAuthentication(AuthInterface):
             "samlNameIdSPNameQualifier": auth.get_nameid_spnq(),
             "samlSessionIndex": auth.get_session_index(),
         }
+        request.session['saml_session'] = json.dumps(userdata)
 
         self_url = OneLogin_Saml2_Utils.get_self_url(request_args)
         if "RelayState" in request_args.get("post_data") and self_url.rstrip(
@@ -127,7 +120,7 @@ class SAMLAuthentication(AuthInterface):
                     request_args.get("post_data", {}).get("RelayState")
                 )
             )
-        request.session['saml_session'] = json.dumps(userdata)
+
         return userdata
 
     @staticmethod
