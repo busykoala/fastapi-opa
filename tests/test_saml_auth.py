@@ -90,7 +90,7 @@ async def test_assertion_consumer_service(saml_util_mock):
         "samlSessionIndex": "8167416b-6a10-4a4c-889c-7574074e3fc5::f1eaf88b-2bb9-4d2e-8d3d-39587ba1ef37",  # noqa
     }
 
-    request_mock.session.__setitem__.assert_called()
+    request_mock.session.__setitem__.assert_called_once()
     assert expected == response
 
 
@@ -115,59 +115,22 @@ async def test_single_log_out():
     assert response.status_code == 307
 
 
-# @pytest.mark.asyncio
-# async def test_single_log_out_from_IdP_has_error():
-#     saml_conf = SAMLConfig(settings_directory="./tests/test_data/saml")
-#     saml_auth = SAMLAuthentication(saml_conf)
-#
-#     request_mock = Mock()
-#     request_mock.query_params.return_value = {'post_data': {}}
-#     request_mock.session.__setitem__ = Mock()
-#
-#     saml_auth_mock = Mock()
-#     saml_auth_mock.process_slo.return_value = None
-#
-#     response = await saml_auth.single_log_out_from_IdP(request_mock)
-#     request_mock.session.__setitem__.assert_called()
-#     assert list(response.keys()) == ['error']
+async def async_return(result):
+    import asyncio
+    f = asyncio.Future()
+    f.set_result(result)
+    return f
 
 
-# @pytest.mark.asyncio
-# async def test_single_log_out_from_IdP_without_url():
-#     saml_conf = SAMLConfig(settings_directory="./tests/test_data/saml")
-#     saml_auth = SAMLAuthentication(saml_conf)
-#
-#     request_mock = Mock()
-#     request_mock.query_params.return_value = {'post_data': {}}
-#     request_mock.session.__setitem__ = Mock()
-#
-#     saml_auth_mock = Mock()
-#     saml_auth_mock.process_slo.return_value = None
-#     saml_auth_mock.get_errors.return_value = []
-#
-#     response = await saml_auth.single_log_out_from_IdP(saml_auth_mock, request_mock)
-#     request_mock.session.__setitem__.assert_called()
-#     assert isinstance(response, RedirectResponse)
-#     assert response.status_code == 307
-#     assert b'mock.login()' in response.headers.raw[0][1]
-#
-#
-# @pytest.mark.asyncio
-# async def test_single_log_out_from_IdP_with_url():
-#     saml_conf = SAMLConfig(settings_directory="./tests/test_data/saml")
-#     saml_auth = SAMLAuthentication(saml_conf)
-#
-#     request_mock = Mock()
-#     request_mock.query_params.return_value = {'post_data': {}}
-#     request_mock.session.__setitem__ = Mock()
-#
-#     saml_auth_mock = Mock()
-#     saml_auth_mock.process_slo.return_value = 'http://sp.com'
-#     saml_auth_mock.get_errors.return_value = []
-#
-#     response = await saml_auth.single_log_out_from_IdP(saml_auth_mock, request_mock)
-#     request_mock.session.__setitem__.assert_called()
-#
-#     assert isinstance(response, RedirectResponse)
-#     assert response.status_code == 307
-#     assert response.headers.raw[0] == (b'location', b'http://sp.com')
+@pytest.mark.asyncio
+@patch("fastapi_opa.auth.auth_saml.OneLogin_Saml2_Settings")
+async def test_get_index_metadata(saml_settings_mock):
+    saml_conf = SAMLConfig(settings_directory="./tests/test_data/saml")
+    saml_auth = SAMLAuthentication(saml_conf)
+    saml_settings_mock.get_sp_metadata.return_value = ''
+    saml_settings_mock.validate_metadata.return_value = []
+
+    request_mock = Mock()
+    response = await saml_auth.get_metadata(request_mock)
+    assert response.status_code == 200
+    assert response.headers['content-type'] == 'application/xml'

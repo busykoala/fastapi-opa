@@ -6,9 +6,10 @@ from typing import Dict
 from typing import Union
 
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
+from onelogin.saml2.settings import OneLogin_Saml2_Settings
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 
 from fastapi_opa.auth.auth_interface import AuthInterface
 from fastapi_opa.auth.exceptions import SAMLException
@@ -64,7 +65,8 @@ class SAMLAuthentication(AuthInterface):
     async def single_log_out_from_IdP(request: Request) -> \
         Union[RedirectResponse, Dict]:
         req_args = await SAMLAuthentication.prepare_request(request)
-        req_args['get_data'] = {'SAMLResponse': request.query_params.get('SAMLResponse')}
+        if not req_args['get_data'].get('SAMLResponse') and request.query_params.get('SAMLResponse'):
+            req_args['get_data'] = {'SAMLResponse': request.query_params.get('SAMLResponse')}
         auth = await SAMLAuthentication.init_saml_auth(req_args)
         dscb = lambda: request.session.clear()
         url = auth.process_slo(delete_session_cb=dscb)
@@ -100,7 +102,7 @@ class SAMLAuthentication(AuthInterface):
         auth.process_response()
         errors = auth.get_errors()
         if not len(errors) == 0:
-            raise SAMLException()
+            raise SAMLException(auth.get_last_error_reason())
         userdata = {
             "samlUserdata": auth.get_attributes(),
             "samlNameId": auth.get_nameid(),
@@ -125,12 +127,25 @@ class SAMLAuthentication(AuthInterface):
 
     @staticmethod
     async def prepare_request(request: Request):
+        form_data = await request.form()
         return {
             "https": "on" if request.url.scheme == "https" else "off",
             "http_host": request.url.hostname,
             "server_port": request.url.port,
             "script_name": request.url.path,
-            "post_data": await request.form()
+            "post_data": form_data,
             # Uncomment if using ADFS
-            # "lowercase_urlencoding": True
+            # "lowercase_urlencoding": True,
+            'get_data': form_data
         }
+
+    async def get_metadata(self, request: Request):
+        saml_settings = OneLogin_Saml2_Settings(custom_base_path=self.custom_folder,
+                                                sp_validation_only=True)
+        metadata = saml_settings.get_sp_metadata()
+        errors = saml_settings.validate_metadata(metadata)
+        status_code = 200
+        if len(errors) != 0:
+            metadata = ', '.join(errors)
+            status_code = 500
+        return Response(content=metadata, media_type="application/xml", status_code=status_code)
