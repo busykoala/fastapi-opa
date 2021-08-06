@@ -1,5 +1,9 @@
 # Change Log
 
+## [1.3.2] - 2021-08-
+
+- Add session middleware and single log out for auth_saml
+
 ## [1.2.1] - 2021-05-30
 
 - Add readme flow diagram with absolute link to be displayed on pypi.
