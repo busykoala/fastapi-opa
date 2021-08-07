@@ -1,6 +1,6 @@
 # Change Log
 
-## [1.3.2] - 2021-08-
+## [1.3.0] - 2021-08-08
 
 - Add session middleware and single log out for auth_saml
 

@@ -35,4 +35,4 @@ jobs:
         python -m poetry run pytest
     - name: Dependency Check
       run: |
-        python -m poetry run bandit -r fastapi_opa
+        python -m poetry run bandit -r fastapi_opa --exclude="fastapi_opa/example_oidc.py","fastapi_opa/example_saml.py"

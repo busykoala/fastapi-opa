@@ -73,7 +73,7 @@ class SAMLAuthentication(AuthInterface):
                 "SAMLResponse": request.query_params.get("SAMLResponse")
             }
         auth = await self.init_saml_auth(req_args)
-        dscb = lambda: request.session.clear()
+        dscb = lambda: request.session.clear()  # noqa
         url = auth.process_slo(delete_session_cb=dscb)
         errors = auth.get_errors()
         if len(errors) == 0:
