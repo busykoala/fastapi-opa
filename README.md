@@ -1,6 +1,7 @@
 # Open Policy Agent Middleware for FastAPI
 
 ## Table of Contents
+- [Contributors](#contributors)
 - [What does fastapi-opa do](#about)
 - [Installation](#installation)
 - [How to get started](#getting-started)
@@ -10,6 +11,16 @@
   - [SAML Authentication](#saml-auth)
 - [Custom Payload Enrichment](#custom-payload-enrichment)
   - [Graphql Enrichment](#gql-enrichment)
+
+<a name="contributors"/>
+
+## Contributors
+
+<a href="https://github.com/busykoala/fastapi-opa/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=busykoala/fastapi-opa" />
+</a>
+
+Made with [contributors-img](https://contrib.rocks).
 
 <a name="about"/>
 
