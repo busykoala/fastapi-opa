@@ -12,26 +12,26 @@ exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_saml.py"]
 [tool.poetry.dependencies]
 python = "^3.6"
 fastapi = ">=0.63,<0.66"
-itsdangerous = "2.0.1"
-requests = "^2.25.1"
-PyJWT = {extras = ["crypto"], version = "^2.0.1"}
-graphene = {version = "^2.1.8", optional = true}
-python3-saml = {version = "^1.10.1", optional = true}
-python-multipart = {version = "^0.0.5", optional = true}
+itsdangerous = "*"
+requests = "*"
+PyJWT = {extras = ["crypto"], version = "*"}
+graphene = {version = "*", optional = true}
+python3-saml = {version = "*", optional = true}
+python-multipart = {version = "*", optional = true}
 
 
 [tool.poetry.dev-dependencies]
-flake9 = "^3.8.3"
-black = "^20.8b1"
-isort = "^5.8.0"
-bandit = "^1.7.0"
-pytest = "^6.2.2"
-pytest-mock = "^3.5.1"
-mock = "^4.0.3"
-freezegun = "^1.1.0"
-Authlib = "^0.15.3"
-pytest-asyncio = "^0.15.1"
-nest-asyncio = "^1.5.1"
+flake9 = "*"
+black = "*"
+isort = "*"
+bandit = "*"
+pytest = "*"
+pytest-mock = "*"
+mock = "*"
+freezegun = "*"
+Authlib = "*"
+pytest-asyncio = "*"
+nest-asyncio = "*"
 
 [tool.poetry.extras]
 graphql = ["graphene"]
