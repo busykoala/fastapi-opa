@@ -3,6 +3,7 @@
 ## [1.3.0] - 2021-08-08
 
 - Add session middleware and single log out for auth_saml
+- Remove fixed versions of dependencies.
 
 ## [1.2.1] - 2021-05-30
 
