@@ -27,6 +27,9 @@ class OPAMiddleware:
         self, scope: Scope, receive: Receive, send: Send
     ) -> None:
         request = Request(scope, receive, send)
+        if request.method == "OPTIONS":
+            return await self.app(scope, receive, send)
+
         # authenticate user or get redirect to identity provider
         try:
             user_info_or_auth_redirect = (
