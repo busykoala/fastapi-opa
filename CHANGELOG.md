@@ -4,6 +4,7 @@
 
 - Allow updating fastapi >= 0.66 and force updating because of CVE in
   versions < 0.65.2.
+- Stop protecting the openapi endpoints by this middleware.
 
 ## [1.3.0] - 2021-08-08
 
