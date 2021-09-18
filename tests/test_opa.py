@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from lxml import html
 from mock import patch
 
 from fastapi_opa import OPAConfig
@@ -78,3 +79,23 @@ async def test_function_injection(injected_client):
 
     payload = json.loads(req.call_args_list[0][1].get("data")).get("input")
     assert expected_payload == payload
+
+
+def test_openapi_docs_endpoint_accessable(client):
+    response = client.get("/docs")
+    doc = html.fromstring(response.content)
+    title = doc.xpath(".//title")[0].text
+    assert "FastAPI - Swagger UI" == title
+
+
+def test_openapi_redoc_endpoint_accessable(client):
+    response = client.get("/redoc")
+    doc = html.fromstring(response.content)
+    title = doc.xpath(".//title")[0].text
+    assert "FastAPI - ReDoc" == title
+
+
+def test_openapi_json_endpoint_accessable(client):
+    response = client.get("/openapi.json")
+    title = response.json()["info"]["title"]
+    assert "FastAPI" == title
