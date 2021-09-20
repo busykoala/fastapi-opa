@@ -27,12 +27,17 @@ class OPAMiddleware:
         self, scope: Scope, receive: Receive, send: Send
     ) -> None:
         request = Request(scope, receive, send)
+
+        if request.method == "OPTIONS":
+            return await self.app(scope, receive, send)
+
         # allow openapi endpoints without authentication
         if any(
             request.url.path == endpoint
             for endpoint in ["/openapi.json", "/docs", "/redoc"]
         ):
             return await self.app(scope, receive, send)
+
         # authenticate user or get redirect to identity provider
         try:
             user_info_or_auth_redirect = (
