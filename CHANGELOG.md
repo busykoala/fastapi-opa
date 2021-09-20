@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.3.1] - 2021-09-18
+
+- Allow updating fastapi >= 0.66 and force updating because of CVE in
+  versions < 0.65.2.
+- Stop protecting the openapi endpoints by this middleware.
+
 ## [1.3.0] - 2021-08-08
 
 - Add session middleware and single log out for auth_saml
