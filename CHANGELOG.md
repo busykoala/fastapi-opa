@@ -1,15 +1,12 @@
 # Change Log
 
-## [1.3.2] - 2021-09-20
-
-- Skip CORS "OPTIONS" requests.
-- Change redirect to OIDC identity provider from 307 to 303.
-
-## [1.3.1] - 2021-09-18
+## [1.3.1] - 2021-09-19
 
 - Allow updating fastapi >= 0.66 and force updating because of CVE in
   versions < 0.65.2.
 - Stop protecting the openapi endpoints by this middleware.
+- Skip CORS "OPTIONS" requests.
+- Change redirect to OIDC identity provider from 307 to 303.
 
 ## [1.3.0] - 2021-08-08
 
