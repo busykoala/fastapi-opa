@@ -40,8 +40,8 @@ class OPAMiddleware:
 
         # authenticate user or get redirect to identity provider
         try:
-            user_info_or_auth_redirect = (
-                self.config.authentication.authenticate(request)
+            user_info_or_auth_redirect = self.config.authentication.authenticate(
+                request
             )
             if asyncio.iscoroutine(user_info_or_auth_redirect):
                 user_info_or_auth_redirect = await user_info_or_auth_redirect
@@ -59,6 +59,9 @@ class OPAMiddleware:
         # Enrich user_info if injectables are provided
         if self.config.injectables:
             for injectable in self.config.injectables:
+                # Skip endpoints if needed
+                if request.url.path in injectable.skip_endpoints:
+                    continue
                 user_info_or_auth_redirect[
                     injectable.key
                 ] = await injectable.extract(request)

@@ -25,9 +25,7 @@ def client():
 
     @app.get("/")
     async def root() -> Dict:
-        return {
-            "msg": "success",
-        }
+        return {"msg": "success"}
 
     yield TestClient(app)
 
@@ -46,9 +44,7 @@ def injected_client():
 
     @app.get("/")
     async def root() -> Dict:
-        return {
-            "msg": "success",
-        }
+        return {"msg": "success"}
 
     yield TestClient(app)
 
@@ -68,8 +64,6 @@ async def gql_injected_client():
     @app.get("/")
     @pytest.mark.asyncio
     async def root() -> Dict:
-        return {
-            "msg": "success",
-        }
+        return {"msg": "success"}
 
     yield TestClient(app)
