@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 from json.decoder import JSONDecodeError
+from typing import List
+from typing import Optional
 
 import requests
 from fastapi.responses import JSONResponse
@@ -19,9 +21,19 @@ logger = logging.getLogger(__name__)
 
 
 class OPAMiddleware:
-    def __init__(self, app: ASGIApp, config: OPAConfig) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        config: OPAConfig,
+        skip_endpoints: Optional[List[str]] = [
+            "/openapi.json",
+            "/docs",
+            "/redoc",
+        ],
+    ) -> None:
         self.config = config
         self.app = app
+        self.skip_endpoints = skip_endpoints
 
     async def __call__(
         self, scope: Scope, receive: Receive, send: Send
@@ -33,15 +45,14 @@ class OPAMiddleware:
 
         # allow openapi endpoints without authentication
         if any(
-            request.url.path == endpoint
-            for endpoint in ["/openapi.json", "/docs", "/redoc"]
+            request.url.path == endpoint for endpoint in self.skip_endpoints
         ):
             return await self.app(scope, receive, send)
 
         # authenticate user or get redirect to identity provider
         try:
-            user_info_or_auth_redirect = self.config.authentication.authenticate(
-                request
+            user_info_or_auth_redirect = (
+                self.config.authentication.authenticate(request)
             )
             if asyncio.iscoroutine(user_info_or_auth_redirect):
                 user_info_or_auth_redirect = await user_info_or_auth_redirect
