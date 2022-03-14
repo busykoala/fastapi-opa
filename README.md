@@ -209,6 +209,6 @@ For GraphQL there is a ready to use injectable:
 ```python
 from fastapi_opa.opa.enrichment.graphql_enrichment import GraphQLInjectable`
 
-graphql = FancyInjectable("gql_injectable")
+graphql = GraphQLInjectable("gql_injectable")
 opa_config = OPAConfig(authentication=oidc_auth, opa_host=opa_host, injectables=[graphql])
 ```
