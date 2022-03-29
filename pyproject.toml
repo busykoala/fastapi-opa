@@ -10,7 +10,7 @@ keywords = ["fastapi", "oidc", "authentication", "authorization", "saml"]
 exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_saml.py"]
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = ">= 3.6.2, < 4.0"
 fastapi = ">= 0.65.2"
 itsdangerous = "*"
 requests = "*"
