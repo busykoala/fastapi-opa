@@ -1,13 +1,10 @@
 [[package]]
 name = "aniso8601"
-version = "9.0.1"
+version = "7.0.0"
 description = "A library for parsing ISO 8601 strings."
 category = "main"
 optional = true
 python-versions = "*"
-
-[package.extras]
-dev = ["black", "coverage", "isort", "pre-commit", "pyenchant", "pylint"]
 
 [[package]]
 name = "anyio"
@@ -264,40 +261,52 @@ typing-extensions = {version = ">=3.7.4.3", markers = "python_version < \"3.10\"
 
 [[package]]
 name = "graphene"
-version = "3.0"
+version = "2.1.9"
 description = "GraphQL Framework for Python"
 category = "main"
 optional = true
 python-versions = "*"
 
 [package.dependencies]
-aniso8601 = ">=8,<10"
-graphql-core = ">=3.1.2,<3.2.0"
-graphql-relay = ">=3.0,<4"
+aniso8601 = ">=3,<=7"
+graphql-core = ">=2.1,<3"
+graphql-relay = ">=2,<3"
+six = ">=1.10.0,<2"
 
 [package.extras]
-dev = ["black (==19.10b0)", "flake8 (>=3.7,<4)", "pytest (>=5.3,<6)", "pytest-benchmark (>=3.2,<4)", "pytest-cov (>=2.8,<3)", "pytest-mock (>=2,<3)", "pytest-asyncio (>=0.10,<2)", "snapshottest (>=0.5,<1)", "coveralls (>=1.11,<2)", "promise (>=2.3,<3)", "mock (>=4.0,<5)", "pytz (==2021.1)", "iso8601 (>=0.1,<2)"]
-test = ["pytest (>=5.3,<6)", "pytest-benchmark (>=3.2,<4)", "pytest-cov (>=2.8,<3)", "pytest-mock (>=2,<3)", "pytest-asyncio (>=0.10,<2)", "snapshottest (>=0.5,<1)", "coveralls (>=1.11,<2)", "promise (>=2.3,<3)", "mock (>=4.0,<5)", "pytz (==2021.1)", "iso8601 (>=0.1,<2)"]
+django = ["graphene-django"]
+sqlalchemy = ["graphene-sqlalchemy"]
+test = ["pytest", "pytest-benchmark", "pytest-cov", "pytest-mock", "fastdiff (==0.2.0)", "snapshottest", "coveralls", "promise", "six", "mock", "pytz", "iso8601"]
 
 [[package]]
 name = "graphql-core"
-version = "3.1.7"
-description = "GraphQL implementation for Python, a port of GraphQL.js, the JavaScript reference implementation for GraphQL."
+version = "2.3.2"
+description = "GraphQL implementation for Python"
 category = "main"
 optional = true
-python-versions = ">=3.6,<4"
+python-versions = "*"
+
+[package.dependencies]
+promise = ">=2.3,<3"
+rx = ">=1.6,<2"
+six = ">=1.10.0"
+
+[package.extras]
+gevent = ["gevent (>=1.1)"]
+test = ["six (==1.14.0)", "pyannotate (==1.2.0)", "pytest (==4.6.10)", "pytest-django (==3.9.0)", "pytest-cov (==2.8.1)", "coveralls (==1.11.1)", "cython (==0.29.17)", "gevent (==1.5.0)", "pytest-benchmark (==3.2.3)", "pytest-mock (==2.0.0)"]
 
 [[package]]
 name = "graphql-relay"
-version = "3.1.5"
-description = "Relay library for graphql-core"
+version = "2.0.1"
+description = "Relay implementation for Python"
 category = "main"
 optional = true
-python-versions = ">=3.6,<4"
+python-versions = "*"
 
 [package.dependencies]
-graphql-core = ">=3.1,<3.2"
-typing-extensions = {version = ">=4,<5", markers = "python_version < \"3.8\""}
+graphql-core = ">=2.2,<3"
+promise = ">=2.2,<3"
+six = ">=1.12"
 
 [[package]]
 name = "idna"
@@ -483,6 +492,20 @@ importlib-metadata = {version = ">=0.12", markers = "python_version < \"3.8\""}
 [package.extras]
 dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
+
+[[package]]
+name = "promise"
+version = "2.3"
+description = "Promises/A+ implementation for Python"
+category = "main"
+optional = true
+python-versions = "*"
+
+[package.dependencies]
+six = "*"
+
+[package.extras]
+test = ["pytest (>=2.7.3)", "pytest-cov", "coveralls", "futures", "pytest-benchmark", "mock"]
 
 [[package]]
 name = "py"
@@ -675,6 +698,14 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)", "win-inet-pton"]
 use_chardet_on_py3 = ["chardet (>=3.0.2,<5)"]
 
 [[package]]
+name = "rx"
+version = "1.6.1"
+description = "Reactive Extensions (Rx) for Python"
+category = "main"
+optional = true
+python-versions = "*"
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -796,12 +827,12 @@ saml = ["python3-saml", "python-multipart"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">= 3.6.2, < 4.0"
-content-hash = "21016e2ecd80543015babd2853c35b8a6758c6dec955006909c39bd06a35c3ed"
+content-hash = "d83d5dfdedd599e2e02745f96efc9a03035f94e50cb6c93bae956272bc439d11"
 
 [metadata.files]
 aniso8601 = [
-    {file = "aniso8601-9.0.1-py2.py3-none-any.whl", hash = "sha256:1d2b7ef82963909e93c4f24ce48d4de9e66009a21bf1c1e1c85bdd0812fe412f"},
-    {file = "aniso8601-9.0.1.tar.gz", hash = "sha256:72e3117667eedf66951bb2d93f4296a56b94b078a8a95905a052611fb3f1b973"},
+    {file = "aniso8601-7.0.0-py2.py3-none-any.whl", hash = "sha256:d10a4bf949f619f719b227ef5386e31f49a2b6d453004b21f02661ccc8670c7b"},
+    {file = "aniso8601-7.0.0.tar.gz", hash = "sha256:513d2b6637b7853806ae79ffaca6f3e8754bdd547048f5ccc1420aec4b714f1e"},
 ]
 anyio = [
     {file = "anyio-3.5.0-py3-none-any.whl", hash = "sha256:b5fa16c5ff93fa1046f2eeb5bbff2dad4d3514d6cda61d02816dba34fa8c3c2e"},
@@ -970,16 +1001,16 @@ gitpython = [
     {file = "GitPython-3.1.20.tar.gz", hash = "sha256:df0e072a200703a65387b0cfdf0466e3bab729c0458cf6b7349d0e9877636519"},
 ]
 graphene = [
-    {file = "graphene-3.0-py2.py3-none-any.whl", hash = "sha256:57ce5ee7c9dc194224a1df96e4f7cb48d31eae96c791091d059f8f3d4d131390"},
-    {file = "graphene-3.0.tar.gz", hash = "sha256:af48066e152200a071aac1e0b703954c717ec7268720ba190a0c91d9bcb0a122"},
+    {file = "graphene-2.1.9-py2.py3-none-any.whl", hash = "sha256:3d446eb1237c551052bc31155cf1a3a607053e4f58c9172b83a1b597beaa0868"},
+    {file = "graphene-2.1.9.tar.gz", hash = "sha256:b9f2850e064eebfee9a3ef4a1f8aa0742848d97652173ab44c82cc8a62b9ed93"},
 ]
 graphql-core = [
-    {file = "graphql-core-3.1.7.tar.gz", hash = "sha256:62ec192150ccecd9a18cfb79e3e72eb7d1fd68fb594ef19c40099b6deec8ef0c"},
-    {file = "graphql_core-3.1.7-py3-none-any.whl", hash = "sha256:9b460f60320be01c7f3b1766cf3e406933003008055079b9d983b8f3988f4400"},
+    {file = "graphql-core-2.3.2.tar.gz", hash = "sha256:aac46a9ac524c9855910c14c48fc5d60474def7f99fd10245e76608eba7af746"},
+    {file = "graphql_core-2.3.2-py2.py3-none-any.whl", hash = "sha256:44c9bac4514e5e30c5a595fac8e3c76c1975cae14db215e8174c7fe995825bad"},
 ]
 graphql-relay = [
-    {file = "graphql-relay-3.1.5.tar.gz", hash = "sha256:127f40913f11cb847452ef794931261aae3b222eaaf976f7c8430298534e54d3"},
-    {file = "graphql_relay-3.1.5-py3-none-any.whl", hash = "sha256:d1455316182e1017d06f0b4d4a2ce8bafad38253a6c7c5666fc80d5d516ee5c8"},
+    {file = "graphql-relay-2.0.1.tar.gz", hash = "sha256:870b6b5304123a38a0b215a79eace021acce5a466bf40cd39fa18cb8528afabb"},
+    {file = "graphql_relay-2.0.1-py3-none-any.whl", hash = "sha256:ac514cb86db9a43014d7e73511d521137ac12cf0101b2eaa5f0a3da2e10d913d"},
 ]
 idna = [
     {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
@@ -1154,6 +1185,9 @@ pluggy = [
     {file = "pluggy-1.0.0-py2.py3-none-any.whl", hash = "sha256:74134bbf457f031a36d68416e1509f34bd5ccc019f0bcc952c7b909d06b37bd3"},
     {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
 ]
+promise = [
+    {file = "promise-2.3.tar.gz", hash = "sha256:dfd18337c523ba4b6a58801c164c1904a9d4d1b1747c7d5dbf45b693a49d93d0"},
+]
 py = [
     {file = "py-1.11.0-py2.py3-none-any.whl", hash = "sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378"},
     {file = "py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719"},
@@ -1277,6 +1311,10 @@ pyyaml = [
 requests = [
     {file = "requests-2.27.1-py2.py3-none-any.whl", hash = "sha256:f22fa1e554c9ddfd16e6e41ac79759e17be9e492b3587efa038054674760e72d"},
     {file = "requests-2.27.1.tar.gz", hash = "sha256:68d7c56fd5a8999887728ef304a6d12edc7be74f1cfa47714fc8b414525c9a61"},
+]
+rx = [
+    {file = "Rx-1.6.1-py2.py3-none-any.whl", hash = "sha256:7357592bc7e881a95e0c2013b73326f704953301ab551fbc8133a6fadab84105"},
+    {file = "Rx-1.6.1.tar.gz", hash = "sha256:13a1d8d9e252625c173dc795471e614eadfe1cf40ffc684e08b8fff0d9748c23"},
 ]
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},

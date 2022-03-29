@@ -15,7 +15,7 @@ fastapi = ">= 0.65.2"
 itsdangerous = "*"
 requests = "*"
 PyJWT = {extras = ["crypto"], version = "*"}
-graphene = {version = "*", optional = true}
+graphene = {version = "^2", optional = true}
 python3-saml = {version = "*", optional = true}
 python-multipart = {version = "*", optional = true}
 
