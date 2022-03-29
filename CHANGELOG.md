@@ -4,6 +4,7 @@
 - Add the option to skip some given endpoints (middleware + injectable).
 - Allow authentication through bearer token
 - Fix a bug with graphql injectable
+- Update versions and fix python version range
 
 ## [1.3.1] - 2021-09-19
 
