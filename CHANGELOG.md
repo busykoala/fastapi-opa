@@ -1,5 +1,10 @@
 # Change Log
 
+## [1.3.2] - 2022-03-10
+- Add the option to skip some given endpoints (middleware + injectable).
+- Allow authentication through bearer token
+- Fix a bug with graphql injectable
+
 ## [1.3.1] - 2021-09-19
 
 - Allow updating fastapi >= 0.66 and force updating because of CVE in

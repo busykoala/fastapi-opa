@@ -87,15 +87,19 @@ class OIDCAuthentication(AuthInterface):
             ]
         )
         code = request.query_params.get("code")
+        bearer = request.headers.get("Authorization")
 
         # redirect to id provider if code query-value is not present
-        if not code:
+        if not code and not bearer:
             return RedirectResponse(
                 url=self.get_auth_redirect_uri(callback_uri), status_code=303
             )
 
-        auth_token = self.get_auth_token(code, callback_uri)
-        id_token = auth_token.get("id_token")
+        if not bearer:
+            auth_token = self.get_auth_token(code, callback_uri)
+            id_token = auth_token.get("id_token")
+        else:
+            id_token = bearer.replace("Bearer ", "")
         try:
             alg = jwt.get_unverified_header(id_token).get("alg")
         except DecodeError:

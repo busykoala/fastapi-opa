@@ -30,6 +30,4 @@ app.add_middleware(OPAMiddleware, config=opa_config)
 
 @app.get("/")
 async def root() -> Dict:
-    return {
-        "msg": "success",
-    }
+    return {"msg": "success"}

@@ -9,8 +9,9 @@ from fastapi_opa.auth.auth_interface import AuthInterface
 
 
 class Injectable(ABC):
-    def __init__(self, key: str) -> None:
+    def __init__(self, key: str, skip_endpoints: list = []) -> None:
         self.key = key
+        self.skip_endpoints = skip_endpoints
 
     @abstractmethod
     async def extract(self, request: Request) -> List:

@@ -2,6 +2,9 @@ import asyncio
 import json
 import logging
 from json.decoder import JSONDecodeError
+from typing import List
+from typing import Optional
+from unittest.mock import patch
 
 import requests
 from fastapi.responses import JSONResponse
@@ -19,13 +22,24 @@ logger = logging.getLogger(__name__)
 
 
 class OPAMiddleware:
-    def __init__(self, app: ASGIApp, config: OPAConfig) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        config: OPAConfig,
+        skip_endpoints: Optional[List[str]] = [
+            "/openapi.json",
+            "/docs",
+            "/redoc",
+        ],
+    ) -> None:
         self.config = config
         self.app = app
+        self.skip_endpoints = skip_endpoints
 
     async def __call__(
         self, scope: Scope, receive: Receive, send: Send
     ) -> None:
+
         request = Request(scope, receive, send)
 
         if request.method == "OPTIONS":
@@ -33,8 +47,7 @@ class OPAMiddleware:
 
         # allow openapi endpoints without authentication
         if any(
-            request.url.path == endpoint
-            for endpoint in ["/openapi.json", "/docs", "/redoc"]
+            request.url.path == endpoint for endpoint in self.skip_endpoints
         ):
             return await self.app(scope, receive, send)
 
@@ -59,6 +72,9 @@ class OPAMiddleware:
         # Enrich user_info if injectables are provided
         if self.config.injectables:
             for injectable in self.config.injectables:
+                # Skip endpoints if needed
+                if request.url.path in injectable.skip_endpoints:
+                    continue
                 user_info_or_auth_redirect[
                     injectable.key
                 ] = await injectable.extract(request)
@@ -81,7 +97,11 @@ class OPAMiddleware:
         if not is_authorized:
             return await self.get_unauthorized_response(scope, receive, send)
 
-        return await self.app(scope, receive, send)
+        # Small hack to avoid reading twice the request's body in the
+        # middleware stack
+        # See https://github.com/tiangolo/fastapi/issues/394 for more details
+        with patch.object(Request, "body", request.body):
+            return await self.app(scope, receive, send)
 
     @staticmethod
     async def get_unauthorized_response(

@@ -25,6 +25,4 @@ app.add_middleware(
 
 @app.get("/")
 async def root(request: Request) -> Dict:
-    return {
-        "msg": request.session.get("foo"),
-    }
+    return {"msg": request.session.get("foo")}

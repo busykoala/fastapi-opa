@@ -189,17 +189,26 @@ class FancyInjectable(Injectable):
     async def extract(self, request: Request) -> List:
         return ["some", "custom", "stuff"]
 
-fancy_inj = FancyInjectable("fancy_key")
+fancy_inj = FancyInjectable("fancy_key", skip_endpoints=["/health"])
 
 opa_config = OPAConfig(
     authentication=oidc_auth, opa_host=opa_host, injectables=[fancy_inj]
 )
 ```
 
+With `skip_endpoints`, you can define some endpoints where the injectable
+will not be applied.
+
 
 <a name="gql-enrichment"/>
 
 ### Graphql Enrichment
 
-For GraphQL there is a ready to use injectable in
-`fastapi_opa.opa.enrichment.graphql_enrichment.GraphQLInjectable`
+For GraphQL there is a ready to use injectable:
+
+```python
+from fastapi_opa.opa.enrichment.graphql_enrichment import GraphQLInjectable`
+
+graphql = GraphQLInjectable("gql_injectable")
+opa_config = OPAConfig(authentication=oidc_auth, opa_host=opa_host, injectables=[graphql])
+```
