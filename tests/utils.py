@@ -12,10 +12,10 @@ from fastapi_opa.auth.auth_interface import AuthInterface
 from fastapi_opa.opa.opa_config import Injectable
 
 
-def mock_response(status_code, json_data=None):
+def mock_response(status_code, json_data=None, **kwargs):
     json_ = Mock()
     json_.return_value = json_data
-    return Mock(status_code=status_code, json=json_)
+    return Mock(status_code=status_code, json=json_, **kwargs)
 
 
 # ***************************

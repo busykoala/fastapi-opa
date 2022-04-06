@@ -6,6 +6,7 @@ from dataclasses import field
 from json.decoder import JSONDecodeError
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Union
 from urllib.parse import quote
 from urllib.parse import urlunparse
@@ -74,7 +75,9 @@ class OIDCAuthentication(AuthInterface):
             raise OIDCException("Userinfo endpoint not provided")
 
     async def authenticate(
-        self, request: Request
+        self,
+        request: Request,
+        accepted_methods: Optional[List[str]] = ["id_token", "access_token"],
     ) -> Union[RedirectResponse, Dict]:
         callback_uri = urlunparse(
             [
@@ -96,20 +99,25 @@ class OIDCAuthentication(AuthInterface):
             )
 
         if not bearer:
+            if "id_token" not in accepted_methods:
+                raise OIDCException("Using id token is not accepted")
             auth_token = self.get_auth_token(code, callback_uri)
             id_token = auth_token.get("id_token")
+            try:
+                alg = jwt.get_unverified_header(id_token).get("alg")
+            except DecodeError:
+                logging.warning("Error getting unverified header in jwt.")
+                raise OIDCException
+            validated_token = self.obtain_validated_token(alg, id_token)
+            if not self.config.get_user_info:
+                return validated_token
+            user_info = self.get_user_info(auth_token.get("access_token"))
+            self.validate_sub_matching(validated_token, user_info)
         else:
-            id_token = bearer.replace("Bearer ", "")
-        try:
-            alg = jwt.get_unverified_header(id_token).get("alg")
-        except DecodeError:
-            logging.warning("Error getting unverified header in jwt.")
-            raise OIDCException
-        validated_token = self.obtain_validated_token(alg, id_token)
-        if not self.config.get_user_info:
-            return validated_token
-        user_info = self.get_user_info(auth_token.get("access_token"))
-        self.validate_sub_matching(validated_token, user_info)
+            if "access_token" not in accepted_methods:
+                raise OIDCException("Using access token is not accepted")
+            access_token = bearer.replace("Bearer ", "")
+            user_info = self.get_user_info(access_token)
         return user_info
 
     def get_auth_redirect_uri(self, callback_uri):

@@ -9,6 +9,7 @@ from authlib.jose import jwk
 from cryptography.hazmat.primitives._serialization import Encoding
 from cryptography.hazmat.primitives._serialization import PublicFormat
 from freezegun import freeze_time
+from mock import Mock
 
 from fastapi_opa.auth.auth_oidc import OIDCAuthentication
 from fastapi_opa.auth.exceptions import OIDCException
@@ -187,3 +188,30 @@ def get_jwks():
     jwk_["kid"] = "happy-kid"
     jwk_["use"] = "sig"
     return [jwk_]
+
+
+@pytest.mark.asyncio
+async def test_token_type_not_accepted(mocker):
+    with mocker.patch(
+        "fastapi_opa.auth.auth_oidc.requests.get",
+        return_value=oidc_well_known_response(),
+    ):
+        config = oidc_config()
+        oidc = OIDCAuthentication(config)
+
+    url = Mock(scheme="http", netloc="www.test.com", path="test")
+
+    # Ensure that we do not accept id tokens
+    request = mock_response(
+        200, url=url, query_params={"code": "abc"}, headers={}
+    )
+
+    with pytest.raises(OIDCException):
+        await oidc.authenticate(request, accepted_methods=["access_token"])
+
+    # Ensure that we do not accept access tokens
+    request = mock_response(
+        200, url=url, query_params={}, headers={"Authorization": "abc"}
+    )
+    with pytest.raises(OIDCException):
+        await oidc.authenticate(request, accepted_methods=["id_token"])

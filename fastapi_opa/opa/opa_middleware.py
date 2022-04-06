@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 from json.decoder import JSONDecodeError
 from typing import List
 from typing import Optional
@@ -18,7 +19,20 @@ from starlette.types import Send
 from fastapi_opa.auth.exceptions import AuthenticationException
 from fastapi_opa.opa.opa_config import OPAConfig
 
+try:
+    Pattern = re.Pattern
+except AttributeError:
+    # Python3.6 does not contain re.Pattern
+    Pattern = None
+
 logger = logging.getLogger(__name__)
+
+
+def should_skip_endpoint(endpoint: str, skip_endpoints: List[Pattern]) -> bool:
+    for skip in skip_endpoints:
+        if skip.match(endpoint):
+            return True
+    return False
 
 
 class OPAMiddleware:
@@ -34,7 +48,7 @@ class OPAMiddleware:
     ) -> None:
         self.config = config
         self.app = app
-        self.skip_endpoints = skip_endpoints
+        self.skip_endpoints = [re.compile(skip) for skip in skip_endpoints]
 
     async def __call__(
         self, scope: Scope, receive: Receive, send: Send
@@ -46,15 +60,15 @@ class OPAMiddleware:
             return await self.app(scope, receive, send)
 
         # allow openapi endpoints without authentication
-        if any(
-            request.url.path == endpoint for endpoint in self.skip_endpoints
-        ):
+        if should_skip_endpoint(request.url.path, self.skip_endpoints):
             return await self.app(scope, receive, send)
 
         # authenticate user or get redirect to identity provider
         try:
             user_info_or_auth_redirect = (
-                self.config.authentication.authenticate(request)
+                self.config.authentication.authenticate(
+                    request, self.config.accepted_methods
+                )
             )
             if asyncio.iscoroutine(user_info_or_auth_redirect):
                 user_info_or_auth_redirect = await user_info_or_auth_redirect
@@ -73,7 +87,9 @@ class OPAMiddleware:
         if self.config.injectables:
             for injectable in self.config.injectables:
                 # Skip endpoints if needed
-                if request.url.path in injectable.skip_endpoints:
+                if should_skip_endpoint(
+                    request.url.path, injectable.skip_endpoints
+                ):
                     continue
                 user_info_or_auth_redirect[
                     injectable.key

@@ -166,7 +166,8 @@ opa_host = "http://localhost:8181"
 saml_config = SAMLConfig(settings_directory="./tests/test_data/saml")
 saml_auth = SAMLAuthentication(saml_config)
 
-opa_config = OPAConfig(authentication=saml_auth, opa_host=opa_host)
+opa_config = OPAConfig(authentication=saml_auth, opa_host=opa_host,
+                       accepted_methods=["id_token", "access_token"])
 ```
 
 The cert has to be uploaded to your identity provider. Using Keycloak as an
@@ -189,7 +190,7 @@ class FancyInjectable(Injectable):
     async def extract(self, request: Request) -> List:
         return ["some", "custom", "stuff"]
 
-fancy_inj = FancyInjectable("fancy_key", skip_endpoints=["/health"])
+fancy_inj = FancyInjectable("fancy_key", skip_endpoints=["/health", "/api/[^/]*/test])
 
 opa_config = OPAConfig(
     authentication=oidc_auth, opa_host=opa_host, injectables=[fancy_inj]
@@ -197,7 +198,8 @@ opa_config = OPAConfig(
 ```
 
 With `skip_endpoints`, you can define some endpoints where the injectable
-will not be applied.
+will not be applied. The endpoints can be defined either directly or through some
+regex.
 
 
 <a name="gql-enrichment"/>

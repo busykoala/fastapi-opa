@@ -1,10 +1,12 @@
 import json
+import re
 
 import pytest
 from lxml import html
 from mock import patch
 
 from fastapi_opa import OPAConfig
+from fastapi_opa.opa.opa_middleware import should_skip_endpoint
 from tests.utils import AuthenticationDummy
 
 
@@ -99,3 +101,17 @@ def test_openapi_json_endpoint_accessable(client):
     response = client.get("/openapi.json")
     title = response.json()["info"]["title"]
     assert "FastAPI" == title
+
+
+def test_skip_endpoints():
+    skip_endpoints = ["/api", "/test1/[^/]*/test"]
+    skip_endpoints = [re.compile(skip) for skip in skip_endpoints]
+
+    # Test an exact match
+    assert should_skip_endpoint("/api", skip_endpoints)
+
+    # Test a regex match
+    assert should_skip_endpoint("/test1/abcdef.23$/test", skip_endpoints)
+
+    # Test a  non match
+    assert not should_skip_endpoint("/test1", skip_endpoints)

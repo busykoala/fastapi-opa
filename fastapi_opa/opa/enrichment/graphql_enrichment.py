@@ -14,6 +14,7 @@ from graphql import GraphQLSchema
 from graphql import GraphQLString
 from graphql.language.ast import ListType
 from graphql.language.ast import NamedType
+from graphql.language.ast import NonNullType
 from graphql.language.ast import OperationDefinition
 from graphql.language.ast import SelectionSet
 from graphql.language.ast import VariableDefinition
@@ -93,6 +94,8 @@ class GraphQLAnalysis:
     ) -> str:
         if isinstance(item_type, ListType):
             return self.deep_extract_type(item_type.type, "[{}]")
+        elif isinstance(item_type, NonNullType):
+            return type_str.format(item_type.type.name.value)
         else:
             return type_str.format(item_type.name.value)
 
