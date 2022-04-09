@@ -16,11 +16,20 @@
 
 ## Contributors
 
-<a href="https://github.com/busykoala/fastapi-opa/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=busykoala/fastapi-opa" />
-</a>
+Thanks to all our contributors! There is no specific order and hopefully nobody was left out.
 
-Made with [contributors-img](https://contrib.rocks).
+<a href="https://github.com/morestanna">
+  <img src="https://avatars.githubusercontent.com/morestanna" width="60" height="60" />
+</a>
+<a href="https://github.com/busykoala">
+  <img src="https://avatars.githubusercontent.com/busykoala" width="60" height="60" />
+</a>
+<a href="https://github.com/TracyWR">
+  <img src="https://avatars.githubusercontent.com/TracyWR" width="60" height="60" />
+</a>
+<a href="https://github.com/loikki">
+  <img src="https://avatars.githubusercontent.com/loikki" width="60" height="60" />
+</a>
 
 <a name="about"/>
 
