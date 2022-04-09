@@ -1,9 +1,10 @@
 # Change Log
 
-## [1.3.3] - 2022-04-06
+## [1.3.3] - 2022-04-09
 - Uses regex to skip endpoints
 - Properly implement the usage of access tokens
 - Add an option to allow id tokens or access tokens
+- Replace contrib.rocks img with manual list
 
 ## [1.3.2] - 2022-03-10
 - Add the option to skip some given endpoints (middleware + injectable).
