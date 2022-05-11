@@ -95,7 +95,7 @@ class GraphQLAnalysis:
         if isinstance(item_type, ListType):
             return self.deep_extract_type(item_type.type, "[{}]")
         elif isinstance(item_type, NonNullType):
-            return type_str.format(item_type.type.name.value)
+            return self.deep_extract_type(item_type.type, type_str)
         else:
             return type_str.format(item_type.name.value)
 

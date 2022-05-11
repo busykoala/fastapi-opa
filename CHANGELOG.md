@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.3.4] - 2022-05-11
+- Improve type extraction for graphql
+
 ## [1.3.3] - 2022-04-09
 - Uses regex to skip endpoints
 - Properly implement the usage of access tokens
