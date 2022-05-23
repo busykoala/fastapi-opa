@@ -5,7 +5,6 @@ import re
 from json.decoder import JSONDecodeError
 from typing import List
 from typing import Optional
-from unittest.mock import patch
 
 import requests
 from fastapi.responses import JSONResponse
@@ -35,6 +34,23 @@ def should_skip_endpoint(endpoint: str, skip_endpoints: List[Pattern]) -> bool:
     return False
 
 
+class OwnReceive:
+    """
+    This class is required in order to access the request
+    body multiple times.
+    """
+
+    def __init__(self, receive: Receive):
+        self.receive = receive
+        self.data = None
+
+    async def __call__(self):
+        if self.data is None:
+            self.data = await self.receive()
+
+        return self.data
+
+
 class OPAMiddleware:
     def __init__(
         self,
@@ -57,7 +73,9 @@ class OPAMiddleware:
         if scope["type"] == "lifespan":
             return await self.app(scope, receive, send)
 
-        request = Request(scope, receive, send)
+        # Small hack to ensure that later we can still receive the body
+        own_receive = OwnReceive(receive)
+        request = Request(scope, own_receive, send)
 
         if request.method == "OPTIONS":
             return await self.app(scope, receive, send)
@@ -116,11 +134,7 @@ class OPAMiddleware:
         if not is_authorized:
             return await self.get_unauthorized_response(scope, receive, send)
 
-        # Small hack to avoid reading twice the request's body in the
-        # middleware stack
-        # See https://github.com/tiangolo/fastapi/issues/394 for more details
-        with patch.object(Request, "body", request.body):
-            return await self.app(scope, receive, send)
+        return await self.app(scope, own_receive, send)
 
     @staticmethod
     async def get_unauthorized_response(
