@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.3.6] - 2022-05-23
+- Fix multiple usage of the request body
+
 ## [1.3.5] - 2022-05-16
 - Skip lifespan requests (server startup / shutdown)
 
