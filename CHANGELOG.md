@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.3.5] - 2022-05-16
+- Skip lifespan requests (server startup / shutdown)
+
 ## [1.3.4] - 2022-05-11
 - Improve type extraction for graphql
 

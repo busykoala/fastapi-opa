@@ -54,6 +54,9 @@ class OPAMiddleware:
         self, scope: Scope, receive: Receive, send: Send
     ) -> None:
 
+        if scope["type"] == "lifespan":
+            return await self.app(scope, receive, send)
+
         request = Request(scope, receive, send)
 
         if request.method == "OPTIONS":
