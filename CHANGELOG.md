@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.3.7] - 2022-05-26
+- Bump pyjwt due to vulnerability [CVE-2022-29217](https://github.com/advisories/GHSA-ffqj-6fqr-9h24)
+
 ## [1.3.6] - 2022-05-23
 - Fix multiple usage of the request body
 
