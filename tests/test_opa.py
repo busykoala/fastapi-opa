@@ -4,9 +4,11 @@ import re
 import pytest
 from lxml import html
 from mock import patch
+from starlette.requests import Request
 
 from fastapi_opa import OPAConfig
 from fastapi_opa.opa.opa_middleware import should_skip_endpoint
+from tests.conftest import should_skip_client
 from tests.utils import AuthenticationDummy
 
 
@@ -115,3 +117,35 @@ def test_skip_endpoints():
 
     # Test a  non match
     assert not should_skip_endpoint("/test1", skip_endpoints)
+
+
+def test_skip_authentication():
+
+    # Setup API key
+    api_key_header = "API-KEY"
+    api_key_value = "1234"
+
+    def skip_api_key(request: Request):
+        if api_key_header not in request.headers:
+            return False
+        return request.headers[api_key_header] == api_key_value
+
+    client = should_skip_client(skip_api_key)
+
+    with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
+        req.return_value.status_code = 400
+        req.return_value.json = lambda: {"result": {"allow": False}}
+
+        # Ensure that we fail without an API key
+        response = client.get("/")
+        assert response.status_code != 200
+
+        # Ensure that we fail with a wrong API key
+        response = client.get(
+            "/", headers={api_key_header: api_key_value + "1"}
+        )
+        assert response.status_code != 200
+
+        # Ensure that we pass with the correct API key
+        response = client.get("/", headers={api_key_header: api_key_value})
+        assert response.status_code == 200

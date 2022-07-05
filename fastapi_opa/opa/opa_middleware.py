@@ -3,6 +3,7 @@ import json
 import logging
 import re
 from json.decoder import JSONDecodeError
+from typing import Callable
 from typing import List
 from typing import Optional
 
@@ -51,6 +52,9 @@ class OwnReceive:
         return self.data
 
 
+ShouldSkip = Callable[[Request], bool]
+
+
 class OPAMiddleware:
     def __init__(
         self,
@@ -61,10 +65,12 @@ class OPAMiddleware:
             "/docs",
             "/redoc",
         ],
+        should_skip_authorization: Optional[List[ShouldSkip]] = [],
     ) -> None:
         self.config = config
         self.app = app
         self.skip_endpoints = [re.compile(skip) for skip in skip_endpoints]
+        self.should_skip_authorization = should_skip_authorization
 
     async def __call__(
         self, scope: Scope, receive: Receive, send: Send
@@ -76,6 +82,10 @@ class OPAMiddleware:
         # Small hack to ensure that later we can still receive the body
         own_receive = OwnReceive(receive)
         request = Request(scope, own_receive, send)
+
+        for should_skip in self.should_skip_authorization:
+            if should_skip(request):
+                return await self.app(scope, receive, send)
 
         if request.method == "OPTIONS":
             return await self.app(scope, receive, send)
@@ -103,7 +113,6 @@ class OPAMiddleware:
             )
 
         # Check OPA decision for info provided in user_info
-        is_authorized = False
         # Enrich user_info if injectables are provided
         if self.config.injectables:
             for injectable in self.config.injectables:
@@ -123,18 +132,31 @@ class OPAMiddleware:
         opa_decision = requests.post(
             self.config.opa_url, data=json.dumps(data)
         )
+        return await self.get_decision(
+            opa_decision, scope, own_receive, receive, send
+        )
+
+    def get_decision(
+        self,
+        opa_decision,
+        scope: Scope,
+        own_receive: OwnReceive,
+        receive: Receive,
+        send: Send,
+    ):
+        is_authorized = False
         if opa_decision.status_code != 200:
             logger.error(f"Returned with status {opa_decision.status_code}.")
-            return await self.get_unauthorized_response(scope, receive, send)
+            return self.get_unauthorized_response(scope, receive, send)
         try:
             is_authorized = opa_decision.json().get("result", {}).get("allow")
         except JSONDecodeError:
             logger.error("Unable to decode OPA response.")
-            return await self.get_unauthorized_response(scope, receive, send)
+            return self.get_unauthorized_response(scope, receive, send)
         if not is_authorized:
-            return await self.get_unauthorized_response(scope, receive, send)
+            return self.get_unauthorized_response(scope, receive, send)
 
-        return await self.app(scope, own_receive, send)
+        return self.app(scope, own_receive, send)
 
     @staticmethod
     async def get_unauthorized_response(

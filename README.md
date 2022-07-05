@@ -9,6 +9,7 @@
 - [Authentication Flow](#auth-flow)
   - [OIDC Authentication](#oidc-auth)
   - [SAML Authentication](#saml-auth)
+- [Implementing an API Key](#api-key)
 - [Custom Payload Enrichment](#custom-payload-enrichment)
   - [Graphql Enrichment](#gql-enrichment)
 
@@ -184,6 +185,29 @@ idp you need to configure `encrypt assertion`, `client signature required`,
 `force POST bindings` on creating the client.
 Also configure: `Client Scopes` -> `role_list (saml)` -> `Mappers tab` ->
 `role list` -> `Single Role Attribute`
+
+<a name="api-key"/>
+
+## Implementing an API key
+If you need to skip the authorization process for some services, you can use an API key shared
+between the two services:
+
+```python
+api_key_header = "API-KEY"
+api_key_value = "1234"
+def skip_api_key(request: Request):
+    if api_key_header not in request.headers:
+        return False
+    return request.headers[api_key_header] == api_key_value
+
+opa_config = OPAConfig(authentication=oidc_auth, opa_host=opa_host)
+app.add_middleware(
+    OPAMiddleware,
+    config=opa_config,
+    should_skip_authorization=[skip_api_key],
+)
+```
+
 
 <a name="custom-payload-enrichment"/>
 
