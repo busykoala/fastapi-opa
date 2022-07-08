@@ -85,16 +85,23 @@ class OPAMiddleware:
             return await self.app(scope, receive, send)
 
         # authenticate user or get redirect to identity provider
-        try:
-            user_info_or_auth_redirect = (
-                self.config.authentication.authenticate(
+        successful = False
+        for auth in self.config.authentication:
+            try:
+                user_info_or_auth_redirect = auth.authenticate(
                     request, self.config.accepted_methods
                 )
-            )
-            if asyncio.iscoroutine(user_info_or_auth_redirect):
-                user_info_or_auth_redirect = await user_info_or_auth_redirect
-        except AuthenticationException:
-            logger.error("AuthenticationException raised on login")
+                if asyncio.iscoroutine(user_info_or_auth_redirect):
+                    user_info_or_auth_redirect = (
+                        await user_info_or_auth_redirect
+                    )
+                if isinstance(user_info_or_auth_redirect, dict):
+                    successful = True
+                    break
+            except AuthenticationException:
+                logger.error("AuthenticationException raised on login")
+
+        if not successful:
             return await self.get_unauthorized_response(scope, receive, send)
         # Some authentication flows require a prior redirect to id provider
         if isinstance(user_info_or_auth_redirect, RedirectResponse):
@@ -103,7 +110,6 @@ class OPAMiddleware:
             )
 
         # Check OPA decision for info provided in user_info
-        is_authorized = False
         # Enrich user_info if injectables are provided
         if self.config.injectables:
             for injectable in self.config.injectables:
@@ -123,18 +129,31 @@ class OPAMiddleware:
         opa_decision = requests.post(
             self.config.opa_url, data=json.dumps(data)
         )
+        return await self.get_decision(
+            opa_decision, scope, own_receive, receive, send
+        )
+
+    def get_decision(
+        self,
+        opa_decision,
+        scope: Scope,
+        own_receive: OwnReceive,
+        receive: Receive,
+        send: Send,
+    ):
+        is_authorized = False
         if opa_decision.status_code != 200:
             logger.error(f"Returned with status {opa_decision.status_code}.")
-            return await self.get_unauthorized_response(scope, receive, send)
+            return self.get_unauthorized_response(scope, receive, send)
         try:
             is_authorized = opa_decision.json().get("result", {}).get("allow")
         except JSONDecodeError:
             logger.error("Unable to decode OPA response.")
-            return await self.get_unauthorized_response(scope, receive, send)
+            return self.get_unauthorized_response(scope, receive, send)
         if not is_authorized:
-            return await self.get_unauthorized_response(scope, receive, send)
+            return self.get_unauthorized_response(scope, receive, send)
 
-        return await self.app(scope, own_receive, send)
+        return self.app(scope, own_receive, send)
 
     @staticmethod
     async def get_unauthorized_response(

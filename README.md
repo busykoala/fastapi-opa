@@ -7,6 +7,7 @@
 - [How to get started](#getting-started)
 - [Open Policy Agent](#opa)
 - [Authentication Flow](#auth-flow)
+  - [API Key Authentication](#api-key-auth)
   - [OIDC Authentication](#oidc-auth)
   - [SAML Authentication](#saml-auth)
 - [Custom Payload Enrichment](#custom-payload-enrichment)
@@ -145,6 +146,23 @@ flow and inject it into OPAMiddleware
 request if you would like to contribute to the package.
 
 Also there are implementations ready to use.
+
+<a name="api-key-auth"/>
+
+### API Key Authentication
+
+The API key authentication is the simplest authentication system where you simply needs to match
+a given value in the request header:
+```python
+# Configure API keys
+api_key_config = APIKeyConfig(
+    header_key="test",
+    api_key="1234"
+)
+api_key_auth = APIKeyAuthentication(api_key_config)
+```
+Here sending a request with the `header["test"] = "1234"` would be considered as a successful authentication.
+For OPA, the user is `APIKey` and the variable `client` is set with the client address.
 
 <a name="oidc-auth"/>
 

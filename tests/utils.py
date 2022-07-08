@@ -9,6 +9,7 @@ from starlette.responses import RedirectResponse
 
 from fastapi_opa.auth import OIDCConfig
 from fastapi_opa.auth.auth_interface import AuthInterface
+from fastapi_opa.auth.exceptions import AuthenticationException
 from fastapi_opa.opa.opa_config import Injectable
 
 
@@ -22,14 +23,20 @@ def mock_response(status_code, json_data=None, **kwargs):
 # OPA Utils
 # ***************************
 class AuthenticationDummy(AuthInterface):
+    def __init__(self, accept_all=True):
+        self.accept_all = accept_all
+
     def authenticate(
-        self, *args: object, **kwargs: object
+        self, request: Request, accepted_methods=[]
     ) -> Union[RedirectResponse, Dict]:
-        return {
-            "stuff": "some info",
-            "username": "John Doe",
-            "role": "Administrator",
-        }
+        if not self.accept_all and "Authorization" not in request.headers:
+            raise AuthenticationException("Unauthorized")
+        else:
+            return {
+                "stuff": "some info",
+                "username": "John Doe",
+                "role": "Administrator",
+            }
 
 
 class OPAInjectableExample(Injectable):
