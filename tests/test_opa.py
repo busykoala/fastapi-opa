@@ -115,3 +115,24 @@ def test_skip_endpoints():
 
     # Test a  non match
     assert not should_skip_endpoint("/test1", skip_endpoints)
+
+
+def test_multiple_authentication(
+    api_key_auth, client_multiple_authentications
+):
+    client = client_multiple_authentications
+
+    header_key = api_key_auth["header_key"]
+    api_key = api_key_auth["api_key"]
+
+    with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
+        req.return_value.status_code = 200
+        req.return_value.json = lambda: {"result": {"allow": True}}
+        response = client.get("/")
+        assert response.status_code == 401
+
+        response = client.get("/", headers={"Authorization": "1234"})
+        assert response.status_code == 200
+
+        response = client.get("/", headers={header_key: api_key})
+        assert response.status_code == 200

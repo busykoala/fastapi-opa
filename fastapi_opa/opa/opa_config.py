@@ -24,11 +24,13 @@ class Injectable(ABC):
 class OPAConfig:
     def __init__(
         self,
-        authentication: AuthInterface,
+        authentication: [AuthInterface, List[AuthInterface]],
         opa_host: str,
         injectables: Optional[List[Injectable]] = None,
         accepted_methods: Optional[List[str]] = ["id_token", "access_token"],
     ) -> None:
+        if not isinstance(authentication, list):
+            authentication = [authentication]
         self.authentication = authentication
         self.opa_url = f"{opa_host.rstrip('/')}/v1/data/httpapi/authz"
         self.injectables = injectables
