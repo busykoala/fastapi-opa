@@ -101,14 +101,13 @@ class OPAMiddleware:
             except AuthenticationException:
                 logger.error("AuthenticationException raised on login")
 
-        if not successful:
-            return await self.get_unauthorized_response(scope, receive, send)
         # Some authentication flows require a prior redirect to id provider
         if isinstance(user_info_or_auth_redirect, RedirectResponse):
             return await user_info_or_auth_redirect.__call__(
                 scope, receive, send
             )
-
+        if not successful:
+            return await self.get_unauthorized_response(scope, receive, send)
         # Check OPA decision for info provided in user_info
         # Enrich user_info if injectables are provided
         if self.config.injectables:
