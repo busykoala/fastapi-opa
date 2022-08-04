@@ -31,6 +31,9 @@ Thanks to all our contributors! There is no specific order and hopefully nobody 
 <a href="https://github.com/loikki">
   <img src="https://avatars.githubusercontent.com/loikki" width="60" height="60" />
 </a>
+<a href="https://github.com/ejsyx">
+  <img src="https://avatars.githubusercontent.com/ejsyx" width="60" height="60" />
+</a>
 
 <a name="about"/>
 
