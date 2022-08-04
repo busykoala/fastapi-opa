@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.4.1] - 2022-08-04
+- Fix a bug with oidc redirect login
+
 ## [1.4.0] - 2022-07-12
 - Add API Key authentication
 - Add options to allow multiple authentication methods
