@@ -1,5 +1,10 @@
 # Change Log
 
+## [1.4.2] - 2023-01-02
+- Bump GitPython due to vulnerability [CVE-2022-24439](https://github.com/advisories/GHSA-hcpj-qp55-gfph)
+- Drop Python 3.6 support due to incompatibility with GitPython > 3.1.29.
+- Change method from get to post in testing to fix parameter issue.
+
 ## [1.4.1] - 2022-08-04
 - Fix a bug with oidc redirect login
 

@@ -18,7 +18,7 @@ def test_query_parsing(test_payload, expected):
 async def test_gql_injection(gql_injected_client):
     with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
         payload = GQL_TEST_CASES[0][0]
-        gql_injected_client.get("/", json=payload)
+        gql_injected_client.post("/", json=payload)
 
     expected_payload = {
         "stuff": "some info",
@@ -34,7 +34,7 @@ async def test_gql_injection(gql_injected_client):
                 "variables": {"enrolled": "Boolean", "subject": "String"},
             }
         ],
-        "request_method": "GET",
+        "request_method": "POST",
         "request_path": [""],
     }
 

@@ -68,14 +68,14 @@ async def test_not_allowing_opa_flow(client):
 async def test_function_injection(injected_client):
     with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
         payload = {"some": "data"}
-        injected_client.get("/", json=payload)
+        injected_client.post("/", json=payload)
 
     expected_payload = {
         "stuff": "some info",
         "username": "John Doe",
         "role": "Administrator",
         "example_injectable": [{"some": "data"}],
-        "request_method": "GET",
+        "request_method": "POST",
         "request_path": [""],
     }
 
