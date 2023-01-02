@@ -44,7 +44,7 @@ def injected_client():
     app = FastAPI()
     app.add_middleware(OPAMiddleware, config=opa_config)
 
-    @app.get("/")
+    @app.post("/")
     async def root() -> Dict:
         return {"msg": "success"}
 
@@ -80,7 +80,7 @@ def client_multiple_authentications(api_key_auth):
 
 
 @pytest.fixture
-async def gql_injected_client():
+def gql_injected_client():
     opa_host = "http://localhost:8181"
     oidc_auth = AuthenticationDummy()
     injectable = GraphQLInjectable("gql_injectable")
@@ -91,7 +91,7 @@ async def gql_injected_client():
     app = FastAPI()
     app.add_middleware(OPAMiddleware, config=opa_config)
 
-    @app.get("/")
+    @app.post("/")
     @pytest.mark.asyncio
     async def root() -> Dict:
         return {"msg": "success"}
