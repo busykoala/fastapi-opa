@@ -1,23 +1,24 @@
-# Open Policy Agent Middleware for FastAPI
+# Open Policy Agent middleware for FastAPI
 
-## Table of Contents
+## Table of contents
 - [Contributors](#contributors)
 - [What does fastapi-opa do](#about)
 - [Installation](#installation)
 - [How to get started](#getting-started)
 - [Open Policy Agent](#opa)
-- [Authentication Flow](#auth-flow)
-  - [API Key Authentication](#api-key-auth)
-  - [OIDC Authentication](#oidc-auth)
-  - [SAML Authentication](#saml-auth)
-- [Custom Payload Enrichment](#custom-payload-enrichment)
-  - [Graphql Enrichment](#gql-enrichment)
+- [Authentication flow](#auth-flow)
+  - [API key authentication](#api-key-auth)
+  - [OIDC authentication](#oidc-auth)
+  - [SAML authentication](#saml-auth)
+- [Custom payload enrichment](#custom-payload-enrichment)
+  - [GraphQL enrichment](#gql-enrichment)
 
 <a name="contributors"/>
 
 ## Contributors
 
-Thanks to all our contributors! There is no specific order and hopefully nobody was left out.
+Thanks to all the contributors below and everybody helping with issuing
+suggestions and problems.
 
 <a href="https://github.com/morestanna">
   <img src="https://avatars.githubusercontent.com/morestanna" width="60" height="60" />
@@ -40,16 +41,15 @@ Thanks to all our contributors! There is no specific order and hopefully nobody 
 ## What does fastapi-opa do
 
 `fastapi-opa` is an extension to FastAPI that allows you to add a login flow
-to your application within minutes using open policy agent and your favourite
+to your app within minutes using Open Policy Agent and your favourite
 identity provider.
 
 ![Flow Diagram](https://raw.githubusercontent.com/busykoala/fastapi-opa/master/assets/diagram.png)
 
-When a user tries to get a response from an endpoint he/she will be redirected
-to the identity provider for authorization.
-After the authentication the app validates the token provided. Once it was
-validated the user information is used to get an OPA decision whether
-the user is allowed to get any information from the endpoint.
+The middleware redirects the initial user request to the identity provider for
+authentication. After the authentication the app validates the token provided.
+Using the users validated token there is an Open Policy Agent decision upon
+which the endpoint responds with success or failure.
 
 <a name="installation"/>
 
@@ -63,21 +63,22 @@ poetry add [--extras "graphql"] [--extras "saml"] fastapi-opa
 
 ## How to get started
 
-:bulb: Checkout the wiki for a complete environment setup with Keycloak and Open Policy Agent:  
+:bulb: checkout the wiki for a complete environment setup with Keycloak and Open Policy Agent:  
 [Getting Started with FastAPI app with Authentication and Authorization](https://github.com/busykoala/fastapi-opa/wiki#dev-setup)
 
-The package provides a very easy way to integrate authentication and
-authorization. We can decide what authentication flow we inject into the
-OPAMiddleware to be able choosing between different flows.
+The package provides allows to integrate authentication and authorization with
+FastAPI. Depending on your authentication flow you can inject different
+configuration into the `OPAMiddleware`.
 
-There are 
- - one example for oidc : fastapi_opa.example_oidc.py,
- - one example for saml: fastapi_opa.example_saml.py
+There are: 
+ - an example for OIDC : fastapi_opa.example_oidc.py,
+ - an example for SAML: fastapi_opa.example_saml.py
 
 ## Open Policy Agent
 
-The (validated/authenticated) user token is sent to the Open Policy Agent
-with the additional attributes `request_method` and `request_path`.
+The middleware sends the validated and authenticated user token to the Open
+Policy Agent with the additional attributes `request_method` and
+`request_path`.
 
 ```json
 {
@@ -105,10 +106,11 @@ with the additional attributes `request_method` and `request_path`.
 }
 ```
 
-In open policy agent you can now easily create policies using user roles,
+In Open Policy Agent you can now easily create policies using user roles,
 routes, or request methods etc.
 
-An example policy (from [the official OPA docs](https://www.openpolicyagent.org/docs/v0.11.0/http-api-authorization/))
+An example policy (from [the official Open Policy Agent
+docs](https://www.openpolicyagent.org/docs/v0.11.0/http-api-authorization/))
 for this setup could be like:
 
 ```rego
@@ -141,10 +143,10 @@ allow {
 
 <a name="auth-flow"/>
 
-## Authentication Flow
+## Authentication flow
 
 There is an interface provided to easily implement the desired authentication
-flow and inject it into OPAMiddleware
+flow and inject it into `OPAMiddleware`
 (`fastapi_opa.auth.auth_interface.AuthInterface`), or you can open a pull
 request if you would like to contribute to the package.
 
@@ -152,10 +154,11 @@ Also there are implementations ready to use.
 
 <a name="api-key-auth"/>
 
-### API Key Authentication
+### API key authentication
 
-The API key authentication is the simplest authentication system where you simply needs to match
-a given value in the request header:
+The API key authentication is the simplest authentication system where you
+simply needs to match a given value in the request header:
+
 ```python
 # Configure API keys
 api_key_config = APIKeyConfig(
@@ -164,26 +167,28 @@ api_key_config = APIKeyConfig(
 )
 api_key_auth = APIKeyAuthentication(api_key_config)
 ```
-Here sending a request with the `header["test"] = "1234"` would be considered as a successful authentication.
-For OPA, the user is `APIKey` and the variable `client` is set with the client address.
+
+Providing the header `header["test"] = "1234"` would be an authenticated
+request. For Open Policy Agent, the user is `APIKey` and the variable `client`
+is the client address.
 
 <a name="oidc-auth"/>
 
-### OIDC Authentication
+### OIDC authentication
 
 The example in [How to get started](#getting-started) provides an example for
 the implementation of the OIDC Authentication.
 
 <a name="saml-auth"/>
 
-### SAML Authentication
+### SAML authentication
 
 For the saml implementation create your certs using
 `openssl req -new -x509 -days 3652 -nodes -out sp.crt -keyout sp.key` and
 add the keys to the sp section of your `settings.json`. Checkout the test
-settings to get an idea (`tests/test_data/saml/*.json`). The path to your
-own `settings.json` and `advanced_settings.json` has to be provided in the
-`SAMLAuthConfig` like in the example below (do not use the test data in
+settings to get an idea (`tests/test_data/saml/*.json`).
+Provide the path to your own `settings.json` and `advanced_settings.json`
+in the `SAMLAuthConfig` like in the example below (don't use the test data in
 production).
 
 ```python
@@ -200,20 +205,20 @@ opa_config = OPAConfig(authentication=saml_auth, opa_host=opa_host,
                        accepted_methods=["id_token", "access_token"])
 ```
 
-The cert has to be uploaded to your identity provider. Using Keycloak as an
-idp you need to configure `encrypt assertion`, `client signature required`,
-`force POST bindings` on creating the client.
+Upload the certificate to your identity provider. Using Keycloak as an
+identity provider you need to configure `encrypt assertion`,
+`client signature required`, `force POST bindings` on creating the client.
 Also configure: `Client Scopes` -> `role_list (saml)` -> `Mappers tab` ->
 `role list` -> `Single Role Attribute`
 
 <a name="custom-payload-enrichment"/>
 
-## Custom Payload Enrichment
+## Custom payload enrichment
 
-In `fastapi_opa.opa.opa_config.Injectable` an interface is provided to add
-more information to the payload sent to OPA.
+In `fastapi_opa.opa.opa_config.Injectable` there is an interface to add
+more information to the payload sent to Open Policy Agent.
 
-The injectables can be added to the `OPAConfig`. Let's look at an example:
+The injectables are configurable in the `OPAConfig`. Here is an example:
 
 ```python
 class FancyInjectable(Injectable):
@@ -228,13 +233,13 @@ opa_config = OPAConfig(
 ```
 
 With `skip_endpoints`, you can define some endpoints where the injectable
-will not be applied. The endpoints can be defined either directly or through some
-regex.
+isn't applied.
+To define an endpoint either use an exact string or a regular expression.
 
 
 <a name="gql-enrichment"/>
 
-### Graphql Enrichment
+### GraphQL enrichment
 
 For GraphQL there is a ready to use injectable:
 
