@@ -40,7 +40,7 @@ suggestions and problems.
 
 ## What does fastapi-opa do
 
-`fastapi-opa` is an extension to FastAPI that allows you to add a login flow
+The FastAPI extension `fastapi-opa` that allows you to add a login flow
 to your app within minutes using Open Policy Agent and your favourite
 identity provider.
 
@@ -48,8 +48,8 @@ identity provider.
 
 The middleware redirects the initial user request to the identity provider for
 authentication. After the authentication the app validates the token provided.
-Using the users validated token there is an Open Policy Agent decision upon
-which the endpoint responds with success or failure.
+Using the users validated token Open Policy Agent decides whether the response
+has success or failure status.
 
 <a name="installation"/>
 
@@ -70,14 +70,14 @@ The package provides allows to integrate authentication and authorization with
 FastAPI. Depending on your authentication flow you can inject different
 configuration into the `OPAMiddleware`.
 
-There are: 
+For the most frequently used flows checkout the examples: 
  - an example for OIDC : fastapi_opa.example_oidc.py,
  - an example for SAML: fastapi_opa.example_saml.py
 
 ## Open Policy Agent
 
 The middleware sends the validated and authenticated user token to the Open
-Policy Agent with the additional attributes `request_method` and
+Policy Agent with the extra attributes `request_method` and
 `request_path`.
 
 ```json
@@ -106,12 +106,12 @@ Policy Agent with the additional attributes `request_method` and
 }
 ```
 
-In Open Policy Agent you can now easily create policies using user roles,
+In Open Policy Agent you can now create policies using user roles,
 routes, or request methods etc.
 
 An example policy (from [the official Open Policy Agent
 docs](https://www.openpolicyagent.org/docs/v0.11.0/http-api-authorization/))
-for this setup could be like:
+for this setup could look like this:
 
 ```rego
 package httpapi.authz
@@ -145,19 +145,17 @@ allow {
 
 ## Authentication flow
 
-There is an interface provided to easily implement the desired authentication
-flow and inject it into `OPAMiddleware`
-(`fastapi_opa.auth.auth_interface.AuthInterface`), or you can open a pull
-request if you would like to contribute to the package.
+Set up the desired authentication flow with the interface provided and inject
+it into `OPAMiddleware` (`fastapi_opa.auth.auth_interface.AuthInterface`), or
+open a pull request if you would like to contribute to the package.
 
-Also there are implementations ready to use.
+Possibly you can make use of the ready to use implementations below.
 
 <a name="api-key-auth"/>
 
 ### API key authentication
 
-The API key authentication is the simplest authentication system where you
-simply needs to match a given value in the request header:
+In the API key authentication a request header needs to match a given value.
 
 ```python
 # Configure API keys
@@ -168,9 +166,9 @@ api_key_config = APIKeyConfig(
 api_key_auth = APIKeyAuthentication(api_key_config)
 ```
 
-Providing the header `header["test"] = "1234"` would be an authenticated
-request. For Open Policy Agent, the user is `APIKey` and the variable `client`
-is the client address.
+In the example the header `header["test"] = "1234"` authenticates the request.
+For Open Policy Agent, set user to `APIKey` and the variable `client` to the
+client address.
 
 <a name="oidc-auth"/>
 
@@ -215,10 +213,10 @@ Also configure: `Client Scopes` -> `role_list (saml)` -> `Mappers tab` ->
 
 ## Custom payload enrichment
 
-In `fastapi_opa.opa.opa_config.Injectable` there is an interface to add
+Use the interface `fastapi_opa.opa.opa_config.Injectable` to add
 more information to the payload sent to Open Policy Agent.
 
-The injectables are configurable in the `OPAConfig`. Here is an example:
+Configure the injectables in the `OPAConfig`:
 
 ```python
 class FancyInjectable(Injectable):
@@ -233,7 +231,7 @@ opa_config = OPAConfig(
 ```
 
 With `skip_endpoints`, you can define some endpoints where the injectable
-isn't applied.
+has no effect.
 To define an endpoint either use an exact string or a regular expression.
 
 
@@ -241,7 +239,7 @@ To define an endpoint either use an exact string or a regular expression.
 
 ### GraphQL enrichment
 
-For GraphQL there is a ready to use injectable:
+For GraphQL you can use the ready to go injectable:
 
 ```python
 from fastapi_opa.opa.enrichment.graphql_enrichment import GraphQLInjectable`
