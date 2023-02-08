@@ -1,7 +1,7 @@
 # How to contribute
 
-First of all, thank you for taking the time to contribute to this project.
-The contributors try to make a stable project improving continuously.
+Thanks for your interest in contributing. The project's contributors strive to
+maintain stability and continually make improvements.
 
 ## Ways to contribute
 
@@ -37,7 +37,7 @@ Hands-on examples and detailed explanations go into the wiki.
 
 Limit docstrings to places in the code where they help to understand what goes
 on. Other than that critical endpoints use type hinting. Define interfaces for
-all code used when implementing the package.
+all code used for implementing the package.
 
 Use [vale](https://vale.sh/) to lint `README.md` and `CONTRIBUTING.md`. After
 installing `vale` run `vale README.md CONTRIBUTING.md` to get the errors,

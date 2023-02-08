@@ -17,8 +17,7 @@
 
 ## Contributors
 
-Thanks to all the contributors below and everybody helping with issuing
-suggestions and problems.
+Thanks to all the contributors below. Furthermore thanks for raising issues.
 
 <a href="https://github.com/morestanna">
   <img src="https://avatars.githubusercontent.com/morestanna" width="60" height="60" />
@@ -40,16 +39,14 @@ suggestions and problems.
 
 ## What does fastapi-opa do
 
-The FastAPI extension `fastapi-opa` that allows you to add a login flow
-to your app within minutes using Open Policy Agent and your favourite
-identity provider.
+The FastAPI extension `fastapi-opa` allows to add login flows and integrates
+Open Policy Agent to your app.
 
 ![Flow Diagram](https://raw.githubusercontent.com/busykoala/fastapi-opa/master/assets/diagram.png)
 
-The middleware redirects the initial user request to the identity provider for
-authentication. After the authentication the app validates the token provided.
-Using the users validated token Open Policy Agent decides whether the response
-has success or failure status.
+The middleware redirects the request to the identity provider. After the
+authentication it validates the token. Using the token, Open Policy Agent
+decides if the response has success or failure status.
 
 <a name="installation"/>
 
@@ -63,21 +60,20 @@ poetry add [--extras "graphql"] [--extras "saml"] fastapi-opa
 
 ## How to get started
 
-:bulb: checkout the wiki for a complete environment setup with Keycloak and Open Policy Agent:  
+:bulb: checkout the wiki for an environment setup with Keycloak and Open Policy Agent:  
 [Getting Started with FastAPI app with Authentication and Authorization](https://github.com/busykoala/fastapi-opa/wiki#dev-setup)
 
-The package provides allows to integrate authentication and authorization with
-FastAPI. Depending on your authentication flow you can inject different
-configuration into the `OPAMiddleware`.
+The package combines authentication and authorization with FastAPI. You can
+customize the `OPAMiddleware` depending on your authentication flow.
 
-For the most frequently used flows checkout the examples: 
- - an example for OIDC : fastapi_opa.example_oidc.py,
- - an example for SAML: fastapi_opa.example_saml.py
+Check out these examples for the most common flows:
+- OIDC: `fastapi_opa.example_oidc.py`
+- SAML: `fastapi_opa.example_saml.py`
 
 ## Open Policy Agent
 
-The middleware sends the validated and authenticated user token to the Open
-Policy Agent with the extra attributes `request_method` and
+The middleware sends the validated and authenticated user token to Open
+Policy Agent. It adds the extra attributes `request_method` and
 `request_path`.
 
 ```json
@@ -106,8 +102,8 @@ Policy Agent with the extra attributes `request_method` and
 }
 ```
 
-In Open Policy Agent you can now create policies using user roles,
-routes, or request methods etc.
+In Open Policy Agent you can create policies using user roles,
+routes, request methods etc.
 
 An example policy (from [the official Open Policy Agent
 docs](https://www.openpolicyagent.org/docs/v0.11.0/http-api-authorization/))
@@ -145,11 +141,11 @@ allow {
 
 ## Authentication flow
 
-Set up the desired authentication flow with the interface provided and inject
-it into `OPAMiddleware` (`fastapi_opa.auth.auth_interface.AuthInterface`), or
-open a pull request if you would like to contribute to the package.
+Use the provided interface to set up your desired authentication flow. Then
+insert it into `OPAMiddleware` (`fastapi_opa.auth.auth_interface.AuthInterface`).
+Consider submitting a pull request with new flows.
 
-Possibly you can make use of the ready to use implementations below.
+You can also use these ready-to-go implementations:
 
 <a name="api-key-auth"/>
 
@@ -230,10 +226,8 @@ opa_config = OPAConfig(
 )
 ```
 
-With `skip_endpoints`, you can define some endpoints where the injectable
-has no effect.
-To define an endpoint either use an exact string or a regular expression.
-
+Use `skip_endpoints` to choose which endpoints the injectable shouldn't affect.
+To define an endpoint, specify an exact string or a regular expression.
 
 <a name="gql-enrichment"/>
 
