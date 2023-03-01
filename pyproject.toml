@@ -37,6 +37,7 @@ Authlib = "*"
 pytest-asyncio = "*"
 nest-asyncio = "*"
 httpx = "*"
+vale = "^2.20.2"
 
 [tool.poetry.extras]
 graphql = ["graphene"]

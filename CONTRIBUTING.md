@@ -39,8 +39,8 @@ Limit docstrings to places in the code where they help to understand what goes
 on. Other than that critical endpoints use type hinting. Define interfaces for
 all code used for implementing the package.
 
-Use [vale](https://vale.sh/) to lint `README.md` and `CONTRIBUTING.md`. After
-installing `vale` run `vale README.md CONTRIBUTING.md` to get the errors,
+Use [vale](https://vale.sh/) to lint `README.md` and `CONTRIBUTING.md`.
+Run `poetry run vale README.md CONTRIBUTING.md` to get the errors,
 warnings and suggestions.
 
 ## Commits and pull requests
