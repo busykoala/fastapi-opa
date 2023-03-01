@@ -19,8 +19,6 @@ graphene = {version = "^2", optional = true}
 python3-saml = {version = "*", optional = true}
 python-multipart = {version = "*", optional = true}
 # transitive overrides
-lxml = ">= 4.9.1"  # https://github.com/advisories/GHSA-wrxv-2j5q-m38w
-gitpython = "> 3.1.29"  # https://github.com/advisories/GHSA-hcpj-qp55-gfph
 importlib-metadata = "< 5.0"  # https://importlib-metadata.readthedocs.io/en/latest/history.html
 
 
