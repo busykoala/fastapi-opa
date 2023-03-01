@@ -1,7 +1,8 @@
 # Change Log
 
-## [1.4.3] - 2023-02-08
+## [1.4.3] - 2023-03-01
 - Add documentation guidelines enforced with vale.
+- Update packages due to vulnerability [CVE-2023-0286](https://github.com/advisories/GHSA-x4qr-2fvf-3mr5) and others.
 
 ## [1.4.2] - 2023-01-02
 - Bump GitPython due to vulnerability [CVE-2022-24439](https://github.com/advisories/GHSA-hcpj-qp55-gfph)
