@@ -1,52 +1,53 @@
-# How to Contribute
+# How to contribute
 
-First of all, thank you for taking the time to contribute to this project.
-We've tried to make a stable project and try to fix bugs continuously.
+Thanks for your interest in contributing. The project's contributors strive to
+maintain stability and continually make improvements.
 
-## Ways to Contribute
+## Ways to contribute
 
 - Report bugs
 - Feature request opening an issue
 - Contribute code by opening a pull request
 - Improve the documentation
 
-## Contribute Code
+## Contribute code
 
-When contributing code we expect that:
-- the code is tested (automatically and manually)
-- there is a changelog entry (in `CHANGELOG.md`)
-- the package version was adapted if necessary using semantic versioning:
-  - MAJOR version when you make incompatible API changes
-  - MINOR version when you add functionality in a backwards compatible manner
-  - PATCH version when you make backwards compatible bug fixes
-- if libraries aren't used for all package usages they are extras
-- there is documentation for the code
+When contributing code make sure that:
+- you test the code automatically and manually
+- you add a changelog entry to `CHANGELOG.md`
+- you adapt the package with semantic versioning:
+  - `MAJOR` version when you make incompatible API changes
+  - `MINOR` version when you add features in a backwards compatible manner
+  - `PATCH` version when you make backwards compatible bug fixes
+- you put third party libraries into extras if not necessary for every use case
+- you provide documentation
 
-## Testing & Code Style
+## Testing & code style
 
-Next to the Four-eye principle being enforced for pull requests
-there is also an automated test pipeline.
-
-The pipeline runs:
+Whenever possible a second person reviews pull requests.
+Furthermore an automated test pipeline runs with:
 - `pytest` to execute automated tests
 - `black`, `flake8` and `isort` for consistent code style
 - `bandit` to find well known vulnerabilities
 
 ## Documentation
 
-We try to do our best to document the usage of the package in the `README.md`
-as well as there are hands-on examples in the wiki.
+Document the package within `README.md`.
+Hands-on examples and detailed explanations go into the wiki.
 
-There are only docstrings in place in the code if they really help to
-understand what's going on. Other than that critical endpoints implement
-type hinting. Interfaces should be defined for all code which is reused
-by the package user.
+Limit docstrings to places in the code where they help to understand what goes
+on. Other than that critical endpoints use type hinting. Define interfaces for
+all code used for implementing the package.
 
-## Commits and Pull Requests
+Use [vale](https://vale.sh/) to lint `README.md` and `CONTRIBUTING.md`.
+Run `poetry run vale README.md CONTRIBUTING.md` to get the errors,
+warnings and suggestions.
 
-Commits should be well structured and split into atomic changes.
+## Commits and pull requests
+
+Structure commits well and split into atomic changes.
 Checkout [Chris Beams - How to Write a Commit Message](https://chris.beams.io/posts/git-commit/#seven-rules)
 to improve on the messages.
 
-One pull request handles one issue/feature and there is an explanation
-how it will impact the package and how it is valuable for this project.
+One pull request handles one issue/feature and it explains
+how it impacts the package and describes the value for this project.

@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.4.3] - 2023-02-08
+- Add documentation guidelines enforced with vale.
+
 ## [1.4.2] - 2023-01-02
 - Bump GitPython due to vulnerability [CVE-2022-24439](https://github.com/advisories/GHSA-hcpj-qp55-gfph)
 - Drop Python 3.6 support due to incompatibility with GitPython > 3.1.29.

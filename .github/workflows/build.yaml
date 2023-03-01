@@ -30,6 +30,7 @@ jobs:
         python -m poetry run flake8 .
         python -m poetry run black . --check
         python -m poetry run isort . --check
+        python -m poetry run vale README.md CONTRIBUTING.md
     - name: Test with pytest
       run: |
         python -m poetry run pytest
