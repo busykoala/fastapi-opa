@@ -43,8 +43,8 @@ class SAMLAuthentication(AuthInterface):
 
         elif "acs" in request.query_params:
             logger.debug("--acs--")
-            return await (
-                self.assertion_consumer_service(auth, request_args, request)
+            return await self.assertion_consumer_service(
+                auth, request_args, request
             )
 
         elif "slo" in request.query_params:
