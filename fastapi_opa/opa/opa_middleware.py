@@ -125,7 +125,7 @@ class OPAMiddleware:
         # fmt: on
         data = {"input": user_info_or_auth_redirect}
         opa_decision = requests.post(
-            self.config.opa_url, data=json.dumps(data)
+            self.config.opa_url, data=json.dumps(data), timeout=5
         )
         return await self.get_decision(
             opa_decision, scope, own_receive, receive, send

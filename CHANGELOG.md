@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.4.4] - 2023-05-24
+- Update dependencies due to vulnerabilities.
+  - requests: [CVE-2023-32681](https://github.com/advisories/GHSA-j8r2-6x86-q33q)
+  - starlette: [no CVE](https://github.com/advisories/GHSA-v5gw-mw7f-84px)
+- Add timeout to requests calls [CWE-400](https://cwe.mitre.org/data/definitions/400.html)
+
 ## [1.4.3] - 2023-03-01
 - Add documentation guidelines enforced with vale.
 - Update packages due to vulnerability [CVE-2023-0286](https://github.com/advisories/GHSA-x4qr-2fvf-3mr5) and others.

@@ -52,6 +52,7 @@ def test_get_auth_token(mocker):
             "code": "example_code",
             "redirect_uri": "callback_uri",
         },
+        "timeout": 5,
         "headers": {"Authorization": "Basic ZXhhbXBsZS1jbGllbnQ6c2VjcmV0"},
     }
 
