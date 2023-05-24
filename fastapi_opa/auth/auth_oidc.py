@@ -64,7 +64,7 @@ class OIDCAuthentication(AuthInterface):
 
     def set_from_well_known(self):
         endpoints = self.to_dict_or_raise(
-            requests.get(self.config.well_known_endpoint)
+            requests.get(self.config.well_known_endpoint, timeout=5),
         )
         self.issuer = endpoints.get("issuer")
         self.authorization_endpoint = endpoints.get("authorization_endpoint")
@@ -141,7 +141,7 @@ class OIDCAuthentication(AuthInterface):
             "redirect_uri": callback_uri,
         }
         response = requests.post(
-            self.token_endpoint, data=data, headers=headers
+            self.token_endpoint, data=data, headers=headers, timeout=5
         )
         return self.to_dict_or_raise(response)
 
@@ -165,7 +165,7 @@ class OIDCAuthentication(AuthInterface):
                 raise OIDCException(
                     "JWKS endpoint not provided but RS256 used."
                 )
-            response = requests.get(self.jwks_uri)
+            response = requests.get(self.jwks_uri, timeout=5)
             web_key_sets = self.to_dict_or_raise(response)
             keys = web_key_sets.get("keys")
             public_key = self.extract_token_key(keys, id_token)
@@ -204,7 +204,9 @@ class OIDCAuthentication(AuthInterface):
     def get_user_info(self, access_token: str) -> Dict:
         bearer = "Bearer {}".format(access_token)
         headers = {"Authorization": bearer}
-        response = requests.get(self.userinfo_endpoint, headers=headers)
+        response = requests.get(
+            self.userinfo_endpoint, headers=headers, timeout=5
+        )
         return self.to_dict_or_raise(response)
 
     @staticmethod

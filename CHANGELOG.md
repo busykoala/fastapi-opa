@@ -4,6 +4,7 @@
 - Update dependencies due to vulnerabilities.
   - requests: [CVE-2023-32681](https://github.com/advisories/GHSA-j8r2-6x86-q33q)
   - starlette: [no CVE](https://github.com/advisories/GHSA-v5gw-mw7f-84px)
+- Add timeout to requests calls [CWE-400](https://cwe.mitre.org/data/definitions/400.html)
 
 ## [1.4.3] - 2023-03-01
 - Add documentation guidelines enforced with vale.
