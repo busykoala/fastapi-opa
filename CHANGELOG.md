@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.4.5] - 2023-06-04
+- Use flake8 instead of flake9 to enable removing transitive override.
+
 ## [1.4.4] - 2023-05-24
 - Update dependencies due to vulnerabilities.
   - requests: [CVE-2023-32681](https://github.com/advisories/GHSA-j8r2-6x86-q33q)
