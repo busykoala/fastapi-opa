@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastapi-opa"
-version = "1.4.4"
+version = "1.4.5"
 description = "Fastapi OPA middleware incl. auth flow."
 authors = ["Matthias Osswald <info@busykoala.io>"]
 license = "GPL-3.0-or-later"
@@ -18,12 +18,9 @@ PyJWT = {extras = ["crypto"], version = ">= 2.4"}
 graphene = {version = "^2", optional = true}
 python3-saml = {version = "*", optional = true}
 python-multipart = {version = "*", optional = true}
-# transitive overrides
-importlib-metadata = "< 5.0"  # https://importlib-metadata.readthedocs.io/en/latest/history.html
-
 
 [tool.poetry.dev-dependencies]
-flake9 = "*"
+flake8 = "*"
 black = "*"
 isort = "*"
 bandit = "*"
@@ -47,11 +44,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line_length = 79
-
-[tool.flake8]
-max-complexity = 15
-max-line-length = 79
-extend-ignore = "E203"
 
 [tool.isort]
 line_length = 79
