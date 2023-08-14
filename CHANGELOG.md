@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.4.6] - 2023-08-15
+- Update dependencies due to vulnerabilities
+  - [certifi](https://github.com/advisories/GHSA-xqr8-7jwr-rhp7)
+  - [cryptography](https://github.com/advisories/GHSA-cf7p-gm2m-833m)
+  - [cryptography](https://github.com/advisories/GHSA-jm77-qphf-c4w8)
+  - [GitPython](https://github.com/advisories/GHSA-pr76-5cm5-w9cj)
+
 ## [1.4.5] - 2023-06-04
 - Use flake8 instead of flake9 to enable removing transitive override.
 
