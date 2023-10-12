@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.4.7] - 2023-10-12
+- Add option to define package name parameter in OPA Config
+
 ## [1.4.6] - 2023-08-15
 - Update dependencies due to vulnerabilities
   - [certifi](https://github.com/advisories/GHSA-xqr8-7jwr-rhp7)
