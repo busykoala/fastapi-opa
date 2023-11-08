@@ -34,6 +34,9 @@ Thanks to all the contributors below. Furthermore thanks for raising issues.
 <a href="https://github.com/ejsyx">
   <img src="https://avatars.githubusercontent.com/ejsyx" width="60" height="60" />
 </a>
+<a href="https://github.com/JimFawkes">
+  <img src="https://avatars.githubusercontent.com/JimFawkes" width="60" height="60" />
+</a>
 
 <a name="about"/>
 
