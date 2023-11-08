@@ -17,6 +17,20 @@ def test_opa_config():
     assert "localhost/v1/data/httpapi/authz" == opa_conf.opa_url
 
 
+def test_opa_url_uses_package_name():
+    authentication = AuthenticationDummy()
+    opa_conf = OPAConfig(
+        authentication=authentication,
+        opa_host="http://localhost:8181",
+        package_name="kubernetes.admission",
+    )
+
+    assert (
+        "http://localhost:8181/v1/data/kubernetes/admission"
+        == opa_conf.opa_url
+    )
+
+
 def test_successful_opa_flow(client):
     with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
         req.return_value.status_code = 200
