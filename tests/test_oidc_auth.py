@@ -10,6 +10,9 @@ from cryptography.hazmat.primitives._serialization import Encoding
 from cryptography.hazmat.primitives._serialization import PublicFormat
 from freezegun import freeze_time
 from mock import Mock
+from starlette.datastructures import URL
+from starlette.datastructures import Headers
+from starlette.requests import Request
 
 from fastapi_opa.auth.auth_oidc import OIDCAuthentication
 from fastapi_opa.auth.exceptions import OIDCException
@@ -30,6 +33,25 @@ def test_auth_redirect_uri(mocker):
     expected_url = "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/auth?response_type=code&scope=openid email profile&client_id=example-client&redirect_uri=http%3A//fastapi-app.busykoala.ch/test/path"  # noqa
 
     assert expected_url == response
+
+
+@pytest.mark.asyncio
+async def test_auth_redirect_uri_from_headers(mocker):
+    call_uri = "http://fastapi-app.busykoala.ch/test/path"
+    headers = {"x-forwarded-proto": "https", "x-forwarded-host": "foo.bar.ch"}
+    with mocker.patch(
+        "fastapi_opa.auth.auth_oidc.requests.get",
+        return_value=oidc_well_known_response(),
+    ):
+        config = oidc_config()
+        config.trust_x_headers = True
+        oidc = OIDCAuthentication(config)
+    request: Request = Request({"type": "http", "query_string": ""})
+    request._headers = Headers(headers)
+    request._url = URL(call_uri)
+    response = await oidc.authenticate(request)
+    expected_url = "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/auth?response_type=code&scope=openid%20email%20profile&client_id=example-client&redirect_uri=https%3A//foo.bar.ch/test/path"  # noqa
+    assert expected_url == response.headers["location"]
 
 
 def test_get_auth_token(mocker):

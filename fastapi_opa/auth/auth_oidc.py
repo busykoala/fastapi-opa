@@ -26,10 +26,36 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class OIDCConfig:
+    """
+    Configuration for the OIDC flow.
+
+        PARAMETERS
+        ----------
+        app_uri: str
+            Unused
+        client_id: str
+            The OIDC client id of the service, to be passed with the
+            redirect to the OIDC provider
+        client_secret: str
+            The OIDC client secret, to be passed with the access_token
+            request from the middleware to the OIDC provider
+        scope: str, default="openid email profile"
+            Space seperated list of scopes to request from the OIDC provider
+        trust_x_headers: bool, default=False
+            Whether to trust incoming `x-forwarded-` headers when constructing
+            the redirect to pass to the OIDC provider.
+            The constructed redirect may have to match with a matcher regex
+            configured with the OIDC provider for the client-id.
+            However with a wildcard client-id this may open pathways for
+            malicious injection of headers as part of a cross-site attack,
+            and so defaults to false.
+    """
+
     app_uri: str
     client_id: str
     client_secret: str
     scope: str = field(default="openid email profile")
+    trust_x_headers: bool = field(default=False)
 
     # provide either well_known or all the other values
     well_known_endpoint: str = field(default="")
@@ -81,8 +107,12 @@ class OIDCAuthentication(AuthInterface):
     ) -> Union[RedirectResponse, Dict]:
         callback_uri = urlunparse(
             [
-                request.url.scheme,
-                request.url.netloc,
+                request.headers.get("x-forwarded-proto", request.url.scheme)
+                if self.config.trust_x_headers
+                else request.url.scheme,
+                request.headers.get("x-forwarded-host", request.url.netloc)
+                if self.config.trust_x_headers
+                else request.url.netloc,
                 request.url.path,
                 "",
                 "",

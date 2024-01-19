@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.4.8] - 2024-01-12
+- Optionally use `x-forwarded-` cookies when reconstructing redirect path for OIDC
+
 ## [1.4.7] - 2023-10-12
 - Add option to define package name parameter in OPA Config
 
