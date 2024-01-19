@@ -37,6 +37,9 @@ Thanks to all the contributors below. Furthermore thanks for raising issues.
 <a href="https://github.com/JimFawkes">
   <img src="https://avatars.githubusercontent.com/JimFawkes" width="60" height="60" />
 </a>
+<a href="https://github.com/DiamondJoseph">
+  <img src="https://avatars.githubusercontent.com/DiamondJoseph" width="60" height="60" />
+</a>
 
 <a name="about"/>
 
