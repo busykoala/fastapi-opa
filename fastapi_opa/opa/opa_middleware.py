@@ -116,9 +116,9 @@ class OPAMiddleware:
                     request.url.path, injectable.skip_endpoints
                 ):
                     continue
-                user_info_or_auth_redirect[
-                    injectable.key
-                ] = await injectable.extract(request)
+                user_info_or_auth_redirect[injectable.key] = (
+                    await injectable.extract(request)
+                )
         user_info_or_auth_redirect["request_method"] = scope.get("method")
         # fmt: off
         user_info_or_auth_redirect["request_path"] = scope.get("path").split("/")[1:]  # noqa

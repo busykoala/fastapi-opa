@@ -1,5 +1,10 @@
 # Change Log
 
+## [2.0.0] - 2024-02-07
+- Drop Python 3.7 support due to FastAPI update
+- Update dependencies due to vulnerabilities:
+  - [fastapi](https://github.com/advisories/GHSA-qf9m-vfgh-m389)
+
 ## [1.4.8] - 2024-01-12
 - Optionally use `x-forwarded-` cookies when reconstructing redirect path for OIDC
 

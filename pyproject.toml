@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastapi-opa"
-version = "1.4.8"
+version = "2.0.0"
 description = "Fastapi OPA middleware incl. auth flow."
 authors = ["Matthias Osswald <info@busykoala.io>"]
 license = "GPL-3.0-or-later"
@@ -10,8 +10,8 @@ keywords = ["fastapi", "oidc", "authentication", "authorization", "saml"]
 exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_saml.py"]
 
 [tool.poetry.dependencies]
-python = ">= 3.7, < 4.0"
-fastapi = ">= 0.65.2"
+python = ">= 3.8, < 4.0"
+fastapi = ">= 0.109.2"
 itsdangerous = "*"
 requests = "*"
 PyJWT = {extras = ["crypto"], version = ">= 2.4"}
@@ -24,7 +24,8 @@ flake8 = "*"
 black = "*"
 isort = "*"
 bandit = "*"
-pytest = "*"
+# temp: pin down due to issue with pytest-asyncio
+pytest = "< 8.0.0"
 pytest-mock = "*"
 mock = "*"
 freezegun = "*"
