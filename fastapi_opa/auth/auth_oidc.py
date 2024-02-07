@@ -107,12 +107,18 @@ class OIDCAuthentication(AuthInterface):
     ) -> Union[RedirectResponse, Dict]:
         callback_uri = urlunparse(
             [
-                request.headers.get("x-forwarded-proto", request.url.scheme)
-                if self.config.trust_x_headers
-                else request.url.scheme,
-                request.headers.get("x-forwarded-host", request.url.netloc)
-                if self.config.trust_x_headers
-                else request.url.netloc,
+                (
+                    request.headers.get(
+                        "x-forwarded-proto", request.url.scheme
+                    )
+                    if self.config.trust_x_headers
+                    else request.url.scheme
+                ),
+                (
+                    request.headers.get("x-forwarded-host", request.url.netloc)
+                    if self.config.trust_x_headers
+                    else request.url.netloc
+                ),
                 request.url.path,
                 "",
                 "",
@@ -160,7 +166,7 @@ class OIDCAuthentication(AuthInterface):
 
     def get_auth_token(self, code: str, callback_uri: str) -> Dict:
         authentication_string = "Basic " + b64encode(
-            f"{self.config.client_id}:{self.config.client_secret}".encode(
+            f"{self.config.client_id}:{self.config.client_secret}".encode(  # noqa
                 "utf-8"
             )
         ).decode("utf-8")

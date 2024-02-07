@@ -34,5 +34,5 @@ class APIKeyAuthentication(AuthInterface):
             raise AuthenticationException("Unauthorized")
         return {
             "user": "APIKey",
-            "client": request.client.host,
+            "client": request.client.host if request.client else "",
         }

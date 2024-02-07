@@ -64,7 +64,7 @@ class SAMLAuthentication(AuthInterface):
 
     async def single_log_out_from_idp(
         self, request: Request
-    ) -> (Union[RedirectResponse, Dict]):
+    ) -> Union[RedirectResponse, Dict]:
         req_args = await self.prepare_request(request)
         if not req_args["get_data"].get("SAMLResponse") and (
             request.query_params.get("SAMLResponse")
@@ -112,7 +112,7 @@ class SAMLAuthentication(AuthInterface):
     @staticmethod
     async def assertion_consumer_service(
         auth: OneLogin_Saml2_Auth, request_args: Dict, request: Request
-    ) -> (Union[RedirectResponse, Dict]):
+    ) -> Union[RedirectResponse, Dict]:
         auth.process_response()
         errors = auth.get_errors()
         if not len(errors) == 0:
