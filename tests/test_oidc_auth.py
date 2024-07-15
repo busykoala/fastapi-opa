@@ -5,7 +5,7 @@ from typing import Optional
 
 import jwt
 import pytest
-from authlib.jose import jwk
+from authlib.jose import JsonWebKey
 from cryptography.hazmat.primitives._serialization import Encoding
 from cryptography.hazmat.primitives._serialization import PublicFormat
 from freezegun import freeze_time
@@ -23,12 +23,12 @@ from tests.utils import oidc_well_known_response
 
 def test_auth_redirect_uri(mocker):
     callback_uri = "http://fastapi-app.busykoala.ch/test/path"
-    with mocker.patch(
+    mocker.patch(
         "fastapi_opa.auth.auth_oidc.requests.get",
         return_value=oidc_well_known_response(),
-    ):
-        config = oidc_config()
-        oidc = OIDCAuthentication(config)
+    )
+    config = oidc_config()
+    oidc = OIDCAuthentication(config)
     response = oidc.get_auth_redirect_uri(callback_uri=callback_uri)
     expected_url = "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/auth?response_type=code&scope=openid email profile&client_id=example-client&redirect_uri=http%3A//fastapi-app.busykoala.ch/test/path"  # noqa
 
@@ -39,13 +39,13 @@ def test_auth_redirect_uri(mocker):
 async def test_auth_redirect_uri_from_headers(mocker):
     call_uri = "http://fastapi-app.busykoala.ch/test/path"
     headers = {"x-forwarded-proto": "https", "x-forwarded-host": "foo.bar.ch"}
-    with mocker.patch(
+    mocker.patch(
         "fastapi_opa.auth.auth_oidc.requests.get",
         return_value=oidc_well_known_response(),
-    ):
-        config = oidc_config()
-        config.trust_x_headers = True
-        oidc = OIDCAuthentication(config)
+    )
+    config = oidc_config()
+    config.trust_x_headers = True
+    oidc = OIDCAuthentication(config)
     request: Request = Request({"type": "http", "query_string": ""})
     request._headers = Headers(headers)
     request._url = URL(call_uri)
@@ -55,12 +55,12 @@ async def test_auth_redirect_uri_from_headers(mocker):
 
 
 def test_get_auth_token(mocker):
-    with mocker.patch(
+    mocker.patch(
         "fastapi_opa.auth.auth_oidc.requests.get",
         return_value=oidc_well_known_response(),
-    ):
-        config = oidc_config()
-        oidc = OIDCAuthentication(config)
+    )
+    config = oidc_config()
+    oidc = OIDCAuthentication(config)
 
     mock = mocker.patch(
         "fastapi_opa.auth.auth_oidc.requests.post",
@@ -88,12 +88,12 @@ def test_get_auth_token(mocker):
 def test_get_validated_token_using_hs256(mocker):
     hs265_token, expected = construct_jwt("HS256")
 
-    with mocker.patch(
+    mocker.patch(
         "fastapi_opa.auth.auth_oidc.requests.get",
         return_value=oidc_well_known_response(),
-    ):
-        config = oidc_config()
-        oidc = OIDCAuthentication(config)
+    )
+    config = oidc_config()
+    oidc = OIDCAuthentication(config)
     response = oidc.obtain_validated_token("HS256", hs265_token)
 
     assert expected == response
@@ -103,17 +103,17 @@ def test_get_validated_token_using_rs256(mocker):
     priv_key, pub_key = get_key_pair()
     rs265_token, expected = construct_jwt("RS256", private_key=priv_key)
 
-    with mocker.patch(
+    mocker.patch(
         "fastapi_opa.auth.auth_oidc.requests.get",
         return_value=oidc_well_known_response(),
-    ):
-        config = oidc_config()
-        oidc = OIDCAuthentication(config)
-    with mocker.patch(
+    )
+    config = oidc_config()
+    oidc = OIDCAuthentication(config)
+    mocker.patch(
         "fastapi_opa.auth.auth_oidc.OIDCAuthentication.extract_token_key",
         return_value=pub_key,
-    ):
-        response = oidc.obtain_validated_token("RS256", rs265_token)
+    )
+    response = oidc.obtain_validated_token("RS256", rs265_token)
 
     assert expected == response
 
@@ -128,12 +128,12 @@ def test_extract_token_keys(mocker):
         msg=id_token_payload,
         headers={"kid": "happy-kid"},
     )[0]
-    with mocker.patch(
+    mocker.patch(
         "fastapi_opa.auth.auth_oidc.requests.get",
         return_value=oidc_well_known_response(),
-    ):
-        config = oidc_config()
-        oidc = OIDCAuthentication(config)
+    )
+    config = oidc_config()
+    oidc = OIDCAuthentication(config)
     key = oidc.extract_token_key(jwks, id_token)
 
     actual = key.public_bytes(Encoding.OpenSSH, PublicFormat.OpenSSH)
@@ -144,12 +144,12 @@ def test_extract_token_keys(mocker):
 def test_validate_sub_matching(mocker):
     sub_1 = {"sub": "subject1"}
     sub_2 = {"sub": "subject2"}
-    with mocker.patch(
+    mocker.patch(
         "fastapi_opa.auth.auth_oidc.requests.get",
         return_value=oidc_well_known_response(),
-    ):
-        config = oidc_config()
-        oidc = OIDCAuthentication(config)
+    )
+    config = oidc_config()
+    oidc = OIDCAuthentication(config)
 
     # expected to not raise (matching sub)
     oidc.validate_sub_matching(sub_1, sub_1)
@@ -207,20 +207,21 @@ PA3L4JBNIp5FF2udPSZclUwjE4yr/8ezzMXLgwGlx4vmj1AcSIIOwM8CAwEAAQ==
 
 def get_jwks():
     _, pub_key = get_key_pair()
-    jwk_ = jwk.dumps(pub_key, kty="RSA")
-    jwk_["kid"] = "happy-kid"
-    jwk_["use"] = "sig"
-    return [jwk_]
+    jwk_ = JsonWebKey.import_key(pub_key, {"kty": "RSA"})
+    jwk_dict = jwk_.as_dict()
+    jwk_dict["kid"] = "happy-kid"
+    jwk_dict["use"] = "sig"
+    return [jwk_dict]
 
 
 @pytest.mark.asyncio
 async def test_token_type_not_accepted(mocker):
-    with mocker.patch(
+    mocker.patch(
         "fastapi_opa.auth.auth_oidc.requests.get",
         return_value=oidc_well_known_response(),
-    ):
-        config = oidc_config()
-        oidc = OIDCAuthentication(config)
+    )
+    config = oidc_config()
+    oidc = OIDCAuthentication(config)
 
     url = Mock(scheme="http", netloc="www.test.com", path="test")
 

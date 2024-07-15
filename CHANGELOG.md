@@ -2,6 +2,7 @@
 
 ## [2.0.2] - 2024-07-15
 - Replace linting and formatting with ruff.
+- Fix deprecation warnings in tests.
 
 ## [2.0.1] - 2024-07-15
 - Security Improvement: Added authentication and authorization checks for HTTP
