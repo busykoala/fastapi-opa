@@ -1,18 +1,24 @@
 import datetime
-from typing import Any, Dict, Optional
+from typing import Any
+from typing import Dict
+from typing import Optional
 
 import jwt
 import pytest
 from authlib.jose import JsonWebKey
-from cryptography.hazmat.primitives._serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives._serialization import Encoding
+from cryptography.hazmat.primitives._serialization import PublicFormat
 from freezegun import freeze_time
 from mock import Mock
-from starlette.datastructures import URL, Headers
+from starlette.datastructures import URL
+from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from fastapi_opa.auth.auth_oidc import OIDCAuthentication
 from fastapi_opa.auth.exceptions import OIDCException
-from tests.utils import mock_response, oidc_config, oidc_well_known_response
+from tests.utils import mock_response
+from tests.utils import oidc_config
+from tests.utils import oidc_well_known_response
 
 
 def test_auth_redirect_uri(mocker):
@@ -201,10 +207,10 @@ PA3L4JBNIp5FF2udPSZclUwjE4yr/8ezzMXLgwGlx4vmj1AcSIIOwM8CAwEAAQ==
 
 def get_jwks():
     _, pub_key = get_key_pair()
-    jwk_ = JsonWebKey.import_key(pub_key, {'kty': 'RSA'})
+    jwk_ = JsonWebKey.import_key(pub_key, {"kty": "RSA"})
     jwk_dict = jwk_.as_dict()
-    jwk_dict['kid'] = 'happy-kid'
-    jwk_dict['use'] = 'sig'
+    jwk_dict["kid"] = "happy-kid"
+    jwk_dict["use"] = "sig"
     return [jwk_dict]
 
 
