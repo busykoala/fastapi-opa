@@ -27,7 +27,7 @@ When contributing code make sure that:
 Whenever possible a second person reviews pull requests.
 Furthermore an automated test pipeline runs with:
 - `pytest` to execute automated tests
-- `black`, `flake8` and `isort` for consistent code style
+- `ruff` for consistent code style
 - `bandit` to find well known vulnerabilities
 
 ## Documentation
