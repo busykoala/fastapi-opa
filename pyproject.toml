@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastapi-opa"
-version = "2.0.1"
+version = "2.0.2"
 description = "Fastapi OPA middleware incl. auth flow."
 authors = ["Matthias Osswald <info@busykoala.io>"]
 license = "GPL-3.0-or-later"
@@ -20,12 +20,8 @@ python3-saml = {version = "*", optional = true}
 python-multipart = {version = "*", optional = true}
 
 [tool.poetry.dev-dependencies]
-flake8 = "*"
-black = "*"
-isort = "*"
 bandit = "*"
-# temp: pin down due to issue with pytest-asyncio
-pytest = "< 8.0.0"
+pytest = "*"
 pytest-mock = "*"
 mock = "*"
 freezegun = "*"
@@ -33,6 +29,7 @@ Authlib = "*"
 pytest-asyncio = "*"
 nest-asyncio = "*"
 httpx = "*"
+ruff = "*"
 vale = "^2.20.2"
 
 [tool.poetry.extras]
@@ -43,10 +40,11 @@ saml = ["python3-saml", "python-multipart"]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.black]
-line_length = 79
+[tool.ruff]
+line-length = 79
 
-[tool.isort]
-line_length = 79
-include_trailing_comma = true
-force_single_line = true
+[tool.ruff.lint]
+select = ["E", "F", "W", "Q", "I"]
+
+[tool.ruff.lint.isort]
+force-single-line = true

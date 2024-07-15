@@ -16,3 +16,4 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+!assets/shell.nix
