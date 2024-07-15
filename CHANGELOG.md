@@ -1,5 +1,13 @@
 # Change Log
 
+## [2.0.1] - 2024-07-15
+- Security Improvement: Added authentication and authorization checks for HTTP
+  OPTIONS requests in OpaMiddleware. This ensures that OPTIONS requests are
+  subjected to the same security policies as other HTTP methods, preventing
+  potential information leaks.
+  [See advisory for more details](https://github.com/advisories/GHSA-5f5c-8rvc-j8wf)
+- Update dependencies due to multiple vulnerabilities.
+
 ## [2.0.0] - 2024-02-07
 - Drop Python 3.7 support due to FastAPI update
 - Update dependencies due to vulnerabilities:

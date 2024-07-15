@@ -18,12 +18,7 @@ from starlette.types import Send
 from fastapi_opa.auth.exceptions import AuthenticationException
 from fastapi_opa.opa.opa_config import OPAConfig
 
-try:
-    Pattern = re.Pattern
-except AttributeError:
-    # Python3.6 does not contain re.Pattern
-    Pattern = None
-
+Pattern = re.Pattern
 logger = logging.getLogger(__name__)
 
 
@@ -76,15 +71,13 @@ class OPAMiddleware:
         own_receive = OwnReceive(receive)
         request = Request(scope, own_receive, send)
 
-        if request.method == "OPTIONS":
-            return await self.app(scope, receive, send)
-
         # allow openapi endpoints without authentication
         if should_skip_endpoint(request.url.path, self.skip_endpoints):
             return await self.app(scope, receive, send)
 
         # authenticate user or get redirect to identity provider
         successful = False
+        user_info_or_auth_redirect = None
         for auth in self.config.authentication:
             try:
                 user_info_or_auth_redirect = auth.authenticate(
