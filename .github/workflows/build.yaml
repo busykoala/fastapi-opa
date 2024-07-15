@@ -29,9 +29,8 @@ jobs:
         python -m poetry install --extras "graphql" --extras "saml"
     - name: Codestyle Checks
       run: |
-        python -m poetry run flake8 .
-        python -m poetry run black . --check
-        python -m poetry run isort . --check
+        python -m poetry run ruff check
+        python -m poetry run ruff format --check
         python -m poetry run vale README.md CONTRIBUTING.md
     - name: Test with pytest
       run: |
