@@ -3,6 +3,8 @@ from typing import Dict
 import nest_asyncio
 import pytest
 from fastapi import FastAPI
+from fastapi import HTTPException
+from fastapi import Response
 from fastapi.testclient import TestClient
 
 from fastapi_opa import OPAConfig
@@ -14,6 +16,12 @@ from tests.utils import AuthenticationDummy
 from tests.utils import OPAInjectableExample
 
 nest_asyncio.apply()
+
+# Sample data for the test
+WRITABLE_ITEMS = {
+    1: True,
+    2: False,
+}
 
 
 @pytest.fixture
@@ -28,6 +36,21 @@ def client():
     @app.get("/")
     async def root() -> Dict:
         return {"msg": "success"}
+
+    @app.get("/items/{item_id}")
+    async def read_item(item_id: int):
+        if item_id not in WRITABLE_ITEMS:
+            raise HTTPException(status_code=404)
+        return {"item_id": item_id}
+
+    @app.options("/items/{item_id}")
+    async def read_item_options(response: Response, item_id: int) -> Dict:
+        if item_id not in WRITABLE_ITEMS:
+            raise HTTPException(status_code=404)
+        response.headers["Allow"] = "OPTIONS, GET" + (
+            ", POST" if WRITABLE_ITEMS[item_id] else ""
+        )
+        return {}
 
     yield TestClient(app)
 
@@ -75,6 +98,21 @@ def client_multiple_authentications(api_key_auth):
     @app.get("/")
     async def root() -> Dict:
         return {"msg": "success"}
+
+    @app.get("/items/{item_id}")
+    async def read_item(item_id: int):
+        if item_id not in WRITABLE_ITEMS:
+            raise HTTPException(status_code=404)
+        return {"item_id": item_id}
+
+    @app.options("/items/{item_id}")
+    async def read_item_options(response: Response, item_id: int) -> Dict:
+        if item_id not in WRITABLE_ITEMS:
+            raise HTTPException(status_code=404)
+        response.headers["Allow"] = "OPTIONS, GET" + (
+            ", POST" if WRITABLE_ITEMS[item_id] else ""
+        )
+        return {}
 
     yield TestClient(app)
 
