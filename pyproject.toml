@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastapi-opa"
-version = "2.0.0"
+version = "2.0.1"
 description = "Fastapi OPA middleware incl. auth flow."
 authors = ["Matthias Osswald <info@busykoala.io>"]
 license = "GPL-3.0-or-later"
