@@ -1,5 +1,8 @@
 # Change Log
 
+## [2.0.3] - 2024-12-02
+- Fix request body handling for large request bodies.
+
 ## [2.0.2] - 2024-07-15
 - Replace linting and formatting with ruff.
 - Fix deprecation warnings in tests.
