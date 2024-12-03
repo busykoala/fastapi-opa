@@ -1,0 +1,24 @@
+[
+    {
+        "locations": [
+            {
+                "altitude": 0,
+                "date": "2024-01-05T09:00:41.513000+0000",
+                "longitude": 11.102148,
+                "latitude": 47.517788
+            },
+            {
+                "longitude": 11.102176,
+                "date": "2024-01-05T09:00:41.522000+0000",
+                "latitude": 47.517333,
+                "altitude": 0
+            }
+        ],
+        "burnedCalories": 423,
+        "distance": 4936.82,
+        "endDate": "2024-01-04T16:31:24.000000+0000",
+        "startDate": "2024-01-04T16:00:37.000000+0000",
+        "averageBPM": null,
+        "gainedElevation": 0
+    }
+]

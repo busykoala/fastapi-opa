@@ -31,6 +31,7 @@ nest-asyncio = "*"
 httpx = "*"
 ruff = "*"
 vale = "^2.20.2"
+uvicorn = "*"
 
 [tool.poetry.extras]
 graphql = ["graphene"]
