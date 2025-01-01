@@ -73,7 +73,7 @@ class OPAMiddleware:
         self,
         app: ASGIApp,
         config: OPAConfig,
-        skip_endpoints=None,
+        skip_endpoints: Optional[List[str]] = None,
         max_buffer_size: Optional[int] = None,
     ) -> None:
         if skip_endpoints is None:
