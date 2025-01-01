@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastapi-opa"
-version = "2.0.2"
+version = "2.0.3"
 description = "Fastapi OPA middleware incl. auth flow."
 authors = ["Matthias Osswald <info@busykoala.io>"]
 license = "GPL-3.0-or-later"
@@ -36,6 +36,9 @@ vale = "^2.20.2"
 graphql = ["graphene"]
 saml = ["python3-saml", "python-multipart"]
 
+[tool.poetry.group.dev.dependencies]
+pytest-timeout = "^2.3.1"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -45,6 +48,7 @@ line-length = 79
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "Q", "I"]
+ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 force-single-line = true

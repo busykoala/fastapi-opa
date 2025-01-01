@@ -164,7 +164,7 @@ def construct_jwt(
     msg: Dict[str, Any] = None,
     headers: Optional[Dict] = None,
 ):
-    iat_timestamp = datetime.datetime.utcnow().timestamp()
+    iat_timestamp = datetime.datetime.now(datetime.UTC).timestamp()
     delta_days = 1000000
     # This or patch jwt.decode
     if not msg:

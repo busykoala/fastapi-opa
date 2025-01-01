@@ -43,6 +43,9 @@ Thanks to all the contributors below. Furthermore thanks for raising issues.
 <a href="https://github.com/miceg">
   <img src="https://avatars.githubusercontent.com/miceg" width="60" height="60" />
 </a>
+<a href="https://github.com/JulianSprung">
+  <img src="https://avatars.githubusercontent.com/JulianSprung" width="60" height="60" />
+</a>
 
 <a name="about"/>
 
