@@ -1,9 +1,13 @@
+from typing import Any
+from typing import AsyncGenerator
+from typing import Callable
 from typing import Dict
 
 import nest_asyncio
 import pytest
 from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi import Request
 from fastapi import Response
 from fastapi.testclient import TestClient
 
@@ -52,7 +56,33 @@ def client():
         )
         return {}
 
+    @app.post("/items")
+    async def create_item(request: Request):
+        data = await request.json()
+        return {"msg": f"Received {len(str(data))} bytes"}
+
     yield TestClient(app)
+
+
+@pytest.fixture
+def large_body() -> Callable[[], AsyncGenerator[Dict[str, Any], None]]:
+    """Fixture to generate a large request body in chunks."""
+
+    async def generate():
+        body = (
+            b'{"input": {"item_id": 1, "data": "'
+            + b"a" * 5 * 1024 * 1024
+            + b'"}}'
+        )
+        for i in range(0, len(body), 1024):
+            yield {
+                "type": "http.request",
+                "body": body[i : i + 1024],
+                "more_body": i + 1024 < len(body),
+            }
+        yield {"type": "http.request", "body": b"", "more_body": False}
+
+    return generate
 
 
 @pytest.fixture
