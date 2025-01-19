@@ -1,22 +1,18 @@
 import json
 import logging
 from base64 import b64encode
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 from json.decoder import JSONDecodeError
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
-from urllib.parse import quote
-from urllib.parse import urlunparse
+from typing import Dict, List, Optional, Union
+from urllib.parse import quote, urlunparse
 
 import jwt
 import requests
-from jwt.exceptions import DecodeError
-from jwt.exceptions import InvalidTokenError
+from jwt.exceptions import DecodeError, InvalidTokenError
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
+from authlib.oauth2.rfc7636 import create_s256_code_challenge
+from authlib.common.security import generate_token
 
 from fastapi_opa.auth.auth_interface import AuthInterface
 from fastapi_opa.auth.exceptions import OIDCException
@@ -27,7 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class OIDCConfig:
     """
-    Configuration for the OIDC flow.
+    Configuration for the OIDC flow with PKCE support.
 
         PARAMETERS
         ----------
@@ -36,9 +32,10 @@ class OIDCConfig:
         client_id: str
             The OIDC client id of the service, to be passed with the
             redirect to the OIDC provider
-        client_secret: str
-            The OIDC client secret, to be passed with the access_token
-            request from the middleware to the OIDC provider
+        client_secret: str, default=None
+            The OIDC client secret, must be passed with the access_token
+            request from the middleware to the OIDC provider for confidential
+            clients. It is optional for public clients.
         scope: str, default="openid email profile"
             Space seperated list of scopes to request from the OIDC provider
         trust_x_headers: bool, default=False
@@ -49,23 +46,57 @@ class OIDCConfig:
             However with a wildcard client-id this may open pathways for
             malicious injection of headers as part of a cross-site attack,
             and so defaults to false.
+        is_public_client: bool, default=False
+            Boolean configuration for public clients, default is false for
+            confidential clients.
+        use_auth_header: bool, default=True
+            Token request configuration for sending client_id and secret
+            in body if False and not public.
+        code_verifier: str, init=False
+            A cryptographic string created by the client for PKCE
+        code_challenge: str, init=False
+            A transformation of the `code_verifier` sent in the initial
+            authorization request.
+        code_challenge_method: str, default="S256"
+            Hashing method for the trasformation
+        response_type: str, default="code"
+            Authorization code response type
+        grant_type: str, default="authorization_code"
+            Grant type for the OIDC flow
     """
-
     app_uri: str
     client_id: str
-    client_secret: str
+    client_secret: Optional[str] = None
     scope: str = field(default="openid email profile")
     trust_x_headers: bool = field(default=False)
 
-    # provide either well_known or all the other values
+    # Client authentication options for the token request
+    is_public_client: bool = field(default=False)
+    use_auth_header: bool = field(default=True)
+
+    # PKCE specific fields
+    code_verifier: str = field(init=False)
+    code_challenge: str = field(init=False)
+    code_challenge_method: str = field(default="S256")
+    response_type: str = field(default="code")
+    grant_type: str = field(default="authorization_code")
+
+    # OIDC endpoints configuration
     well_known_endpoint: str = field(default="")
     authorization_endpoint: str = field(default="")
     issuer: str = field(default="")
     token_endpoint: str = field(default="")
     jwks_uri: str = field(default="")
-
     userinfo_endpoint: str = field(default="")
     get_user_info: bool = field(default=False)
+
+    def __post_init__(self):
+        """Validate configuration and generate PKCE parameters."""
+        if not self.is_public_client and not self.client_secret:
+            raise OIDCException("client_secret is required for confidential clients")
+
+        self.code_verifier = generate_token(128)
+        self.code_challenge = create_s256_code_challenge(self.code_verifier)
 
 
 class OIDCAuthentication(AuthInterface):
@@ -99,6 +130,34 @@ class OIDCAuthentication(AuthInterface):
         self.userinfo_endpoint = endpoints.get("userinfo_endpoint")
         if self.config.get_user_info and not self.userinfo_endpoint:
             raise OIDCException("Userinfo endpoint not provided")
+
+    def get_auth_token(self, code: str, callback_uri: str) -> Dict:
+        """
+        Handle client authentication for public/confidential clients
+        to get the token.
+        """
+        data = {
+            "grant_type": self.config.grant_type,
+            "code": code,
+            "redirect_uri": callback_uri,
+            "code_verifier": self.config.code_verifier,
+            "client_id": self.config.client_id,
+        }
+
+        headers = {}
+        if not self.config.is_public_client:
+            if self.config.use_auth_header:
+                authentication_string = "Basic " + b64encode(
+                    f"{self.config.client_id}:{self.config.client_secret}".encode("utf-8")
+                ).decode("utf-8")
+                headers["Authorization"] = authentication_string
+            else:
+                data["client_secret"] = self.config.client_secret
+
+        response = requests.post(
+            self.token_endpoint, data=data, headers=headers, timeout=5
+        )
+        return self.to_dict_or_raise(response)
 
     async def authenticate(
         self,
@@ -149,37 +208,25 @@ class OIDCAuthentication(AuthInterface):
                 return validated_token
             user_info = self.get_user_info(auth_token.get("access_token"))
             self.validate_sub_matching(validated_token, user_info)
+            return user_info
         else:
             if "access_token" not in accepted_methods:
                 raise OIDCException("Using access token is not accepted")
             access_token = bearer.replace("Bearer ", "")
             user_info = self.get_user_info(access_token)
-        return user_info
+            return user_info
 
     def get_auth_redirect_uri(self, callback_uri):
-        return "{}?response_type=code&scope={}&client_id={}&redirect_uri={}".format(  # noqa
-            self.authorization_endpoint,
-            self.config.scope,
-            self.config.client_id,
-            quote(callback_uri),
-        )
-
-    def get_auth_token(self, code: str, callback_uri: str) -> Dict:
-        authentication_string = "Basic " + b64encode(
-            f"{self.config.client_id}:{self.config.client_secret}".encode(  # noqa
-                "utf-8"
-            )
-        ).decode("utf-8")
-        headers = {"Authorization": authentication_string}
-        data = {
-            "grant_type": "authorization_code",
-            "code": code,
-            "redirect_uri": callback_uri,
+        params = {
+            "response_type": self.config.response_type,
+            "scope": self.config.scope,
+            "client_id": self.config.client_id,
+            "redirect_uri": quote(callback_uri),
+            "code_challenge": self.config.code_challenge,
+            "code_challenge_method": self.config.code_challenge_method
         }
-        response = requests.post(
-            self.token_endpoint, data=data, headers=headers, timeout=5
-        )
-        return self.to_dict_or_raise(response)
+        query = "&".join(f"{k}={v}" for k, v in params.items())
+        return f"{self.authorization_endpoint}?{query}"
 
     def obtain_validated_token(self, alg: str, id_token: str) -> Dict:
         if alg == "HS256":
