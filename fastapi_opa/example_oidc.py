@@ -1,11 +1,17 @@
 from typing import Dict
 
-from fastapi import FastAPI
+from authlib.oauth2.rfc7636 import create_s256_code_challenge
+from authlib.common.security import generate_token
 
+from fastapi import FastAPI
 from fastapi_opa import OPAConfig
 from fastapi_opa import OPAMiddleware
 from fastapi_opa.auth import OIDCAuthentication
 from fastapi_opa.auth import OIDCConfig
+
+# Generate PKCE values using Authlib's built-in functions
+code_verifier = generate_token(128)
+code_challenge = create_s256_code_challenge(code_verifier)
 
 # The hostname of your Open Policy Agent instance
 opa_host = "http://localhost:8181"
@@ -19,6 +25,16 @@ oidc_config = OIDCConfig(
     client_id="example-client",
     # the client secret retrieved from your identity provider
     client_secret="bbb4857c-21ba-44a3-8843-1364984a36906",
+    # client PKCE code challenge method
+    code_challenge_method="S256",
+    # client PKCE response type
+    response_type="code",
+    # client PKCE grant type flow
+    grant_type="authorization_code",
+    # client PKCE configuration for getting the token
+    use_auth_header=False,
+    # client PKCE configuration type: confidential | public
+    is_public_client=False
 )
 oidc_auth = OIDCAuthentication(oidc_config)
 opa_config = OPAConfig(authentication=oidc_auth, opa_host=opa_host)
