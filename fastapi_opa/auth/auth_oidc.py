@@ -151,6 +151,7 @@ class OIDCAuthentication(AuthInterface):
                     f"{self.config.client_id}:{self.config.client_secret}".encode("utf-8")
                 ).decode("utf-8")
                 headers["Authorization"] = authentication_string
+                data.pop("client_id")
             else:
                 data["client_secret"] = self.config.client_secret
 
