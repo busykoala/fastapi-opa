@@ -190,8 +190,13 @@ class OIDCAuthentication(AuthInterface):
 
         # redirect to id provider if code query-value is not present
         if not code and not bearer:
+            query_params = "&".join(
+                f"{k}={v}" for k, v in request.query_params.items()
+            )
             return RedirectResponse(
-                url=self.get_auth_redirect_uri(callback_uri), status_code=303
+                url=self.get_auth_redirect_uri(
+                    f"{callback_uri}?{query_params}"
+                ), status_code=303
             )
 
         if not bearer:
