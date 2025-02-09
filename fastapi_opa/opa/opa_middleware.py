@@ -16,6 +16,7 @@ from starlette.types import Scope
 from starlette.types import Send
 
 from fastapi_opa.auth.exceptions import AuthenticationException
+from fastapi_opa.models import AuthenticationResult
 from fastapi_opa.opa.opa_config import OPAConfig
 
 Pattern = re.Pattern
@@ -74,6 +75,7 @@ class OPAMiddleware:
         app: ASGIApp,
         config: OPAConfig,
         skip_endpoints: Optional[List[str]] = None,
+        force_authorization: Optional[bool] = False,
         max_buffer_size: Optional[int] = None,
     ) -> None:
         if skip_endpoints is None:
@@ -85,6 +87,7 @@ class OPAMiddleware:
         self.config = config
         self.app = app
         self.skip_endpoints = [re.compile(skip) for skip in skip_endpoints]
+        self.force_authorization = force_authorization
         self.max_buffer_size = max_buffer_size
 
     async def __call__(
@@ -104,6 +107,10 @@ class OPAMiddleware:
             if should_skip_endpoint(request.url.path, self.skip_endpoints):
                 return await self.app(scope, receive, send)
 
+            # Initialize state in scope
+            if "state" not in scope:
+                scope["state"] = {}
+
             # authenticate user or get redirect to identity provider
             successful = False
             user_info_or_auth_redirect = None
@@ -116,21 +123,24 @@ class OPAMiddleware:
                         user_info_or_auth_redirect = (
                             await user_info_or_auth_redirect
                         )
-                    if isinstance(user_info_or_auth_redirect, dict):
-                        successful = True
-                        break
+                    if isinstance(user_info_or_auth_redirect, AuthenticationResult):
+                        successful = user_info_or_auth_redirect.success
+                        if successful:
+                            # Store auth_result in scope for cookie middleware
+                            scope["state"]["auth_result"] = user_info_or_auth_redirect
+                            break
                 except AuthenticationException:
                     logger.error("AuthenticationException raised on login")
 
             # Some authentication flows require a prior redirect to id provider
             if isinstance(user_info_or_auth_redirect, RedirectResponse):
-                return await user_info_or_auth_redirect.__call__(
-                    scope, receive, send
-                )
+                return await user_info_or_auth_redirect(scope, receive, send)
+
             if not successful:
                 return await self.get_unauthorized_response(
                     scope, receive, send
                 )
+
             # Check OPA decision for info provided in user_info
             # Enrich user_info if injectables are provided
             if self.config.injectables:
@@ -140,20 +150,27 @@ class OPAMiddleware:
                         request.url.path, injectable.skip_endpoints
                     ):
                         continue
-                    user_info_or_auth_redirect[
+                    user_info_or_auth_redirect.model_dump()[
                         injectable.key
                     ] = await injectable.extract(request)
-            user_info_or_auth_redirect["request_method"] = scope.get("method")
-            # fmt: off
-            user_info_or_auth_redirect["request_path"] = scope.get("path").split("/")[1:]  # noqa
-            # fmt: on
-            data = {"input": user_info_or_auth_redirect}
-            opa_decision = requests.post(
-                self.config.opa_url, data=json.dumps(data), timeout=5
-            )
-            return await self.get_decision(
-                opa_decision, scope, own_receive, receive, send
-            )
+
+            user_info_or_auth_redirect.model_dump()["request_method"] = scope.get("method")
+            user_info_or_auth_redirect.model_dump()["request_path"] = scope.get("path").split("/")[1:]
+            data = {"input": user_info_or_auth_redirect.model_dump()}
+
+            if not self.force_authorization:
+                opa_decision = requests.post(
+                    self.config.opa_url, data=json.dumps(data), timeout=5
+                )
+                return await self.get_decision(
+                    opa_decision, scope, own_receive, receive, send
+                )
+            else:
+                scope["state"]["user_info"] = data["input"]
+                return await self.get_decision(
+                    scope, own_receive, receive, send
+                )
+
         except ValueError as e:
             if "Request body too large" in str(e):
                 response = JSONResponse(
@@ -165,23 +182,26 @@ class OPAMiddleware:
 
     def get_decision(
         self,
-        opa_decision,
         scope: Scope,
         own_receive: OwnReceive,
         receive: Receive,
         send: Send,
+        opa_decision = None,
     ):
-        is_authorized = False
-        if opa_decision.status_code != 200:
-            logger.error(f"Returned with status {opa_decision.status_code}.")
-            return self.get_unauthorized_response(scope, receive, send)
-        try:
-            is_authorized = opa_decision.json().get("result", {}).get("allow")
-        except JSONDecodeError:
-            logger.error("Unable to decode OPA response.")
-            return self.get_unauthorized_response(scope, receive, send)
+        is_authorized = self.force_authorization
         if not is_authorized:
-            return self.get_unauthorized_response(scope, receive, send)
+            if opa_decision.status_code != 200:
+                logger.error(f"Returned with status {opa_decision.status_code}.")
+                return self.get_unauthorized_response(scope, receive, send)
+            try:
+                is_authorized = opa_decision.json().get("result", {}).get("allow")
+            except JSONDecodeError:
+                logger.error("Unable to decode OPA response.")
+                return self.get_unauthorized_response(scope, receive, send)
+            if not is_authorized:
+                return self.get_unauthorized_response(scope, receive, send)
+        else:
+            logger.info("OPA decision skipped from the configuration.")
 
         return self.app(scope, own_receive, send)
 
