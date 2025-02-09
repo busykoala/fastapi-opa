@@ -16,6 +16,7 @@ from authlib.common.security import generate_token
 
 from fastapi_opa.auth.auth_interface import AuthInterface
 from fastapi_opa.auth.exceptions import OIDCException
+from fastapi_opa.models import AuthenticationResult
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,9 @@ class OIDCConfig:
         use_auth_header: bool, default=True
             Token request configuration for sending client_id and secret
             in body if False and not public.
+        preserve_tokens: bool, default=True
+            Boolean configuration to preserve the tokens id_token and
+            access_token in the request for downstream inspection.
         code_verifier: str, init=False
             A cryptographic string created by the client for PKCE
         code_challenge: str, init=False
@@ -73,6 +77,7 @@ class OIDCConfig:
     # Client authentication options for the token request
     is_public_client: bool = field(default=False)
     use_auth_header: bool = field(default=True)
+    preserve_tokens: bool = field(default=True)
 
     # PKCE specific fields
     code_verifier: str = field(init=False)
@@ -164,7 +169,7 @@ class OIDCAuthentication(AuthInterface):
         self,
         request: Request,
         accepted_methods: Optional[List[str]] = ["id_token", "access_token"],
-    ) -> Union[RedirectResponse, Dict]:
+    ) -> Union[RedirectResponse, AuthenticationResult]:
         callback_uri = urlunparse(
             [
                 (
@@ -199,28 +204,57 @@ class OIDCAuthentication(AuthInterface):
                 ), status_code=303
             )
 
-        if not bearer:
-            if "id_token" not in accepted_methods:
-                raise OIDCException("Using id token is not accepted")
-            auth_token = self.get_auth_token(code, callback_uri)
-            id_token = auth_token.get("id_token")
-            try:
-                alg = jwt.get_unverified_header(id_token).get("alg")
-            except DecodeError:
-                logging.warning("Error getting unverified header in jwt.")
-                raise OIDCException
-            validated_token = self.obtain_validated_token(alg, id_token)
-            if not self.config.get_user_info:
-                return validated_token
-            user_info = self.get_user_info(auth_token.get("access_token"))
-            self.validate_sub_matching(validated_token, user_info)
-            return user_info
-        else:
-            if "access_token" not in accepted_methods:
-                raise OIDCException("Using access token is not accepted")
-            access_token = bearer.replace("Bearer ", "")
-            user_info = self.get_user_info(access_token)
-            return user_info
+        try:
+            if not bearer:
+                if "id_token" not in accepted_methods:
+                    raise OIDCException("Using id token is not accepted")
+
+                auth_token = self.get_auth_token(code, callback_uri)
+                id_token = auth_token.get("id_token")
+
+                try:
+                    alg = jwt.get_unverified_header(id_token).get("alg")
+                except DecodeError:
+                    logging.warning("Error getting unverified header in jwt.")
+                    raise OIDCException
+
+                validated_token = self.obtain_validated_token(alg, id_token)
+
+                if not self.config.get_user_info:
+                    return AuthenticationResult(
+                        success=True,
+                        validated_token=validated_token,
+                        raw_tokens=auth_token if self.config.preserve_tokens else None
+                    )
+
+                user_info = self.get_user_info(auth_token.get("access_token"))
+                self.validate_sub_matching(validated_token, user_info)
+
+                return AuthenticationResult(
+                    success=True,
+                    user_info=user_info,
+                    validated_token=validated_token,
+                    raw_tokens=auth_token if self.config.preserve_tokens else None
+                )
+
+            else:
+                if "access_token" not in accepted_methods:
+                    raise OIDCException("Using access token is not accepted")
+                access_token = bearer.replace("Bearer ", "")
+                user_info = self.get_user_info(access_token)
+
+                return AuthenticationResult(
+                    success=True,
+                    user_info=user_info,
+                    raw_tokens={"access_token": access_token} if self.config.preserve_tokens else None
+                )
+
+        except OIDCException as e:
+                    return AuthenticationResult(
+                        success=False,
+                        error=str(e),
+                        raw_tokens=locals().get("auth_token") if self.config.preserve_tokens else None
+                    )
 
     def get_auth_redirect_uri(self, callback_uri):
         params = {
