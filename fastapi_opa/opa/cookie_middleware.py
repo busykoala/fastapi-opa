@@ -148,10 +148,14 @@ class CookieAuthMiddleware:
             scope["state"] = {}
 
         # Check for token in cookie if no Authorization header present
+        original_get_user_info = None
         if not any(name.lower() == b"authorization" for name, _ in scope["headers"]):
             cookie_token = self._extract_token_from_cookie(scope["headers"])
             if cookie_token:
                 self._add_auth_header(scope["headers"], cookie_token)
+                # Temporarily disable get_user_info if token comes from cookie
+                original_get_user_info = self.config.authentication[0].config.get_user_info
+                self.config.authentication[0].config.get_user_info = False
 
         # Wrap send to intercept response
         response_started = False
@@ -192,3 +196,6 @@ class CookieAuthMiddleware:
         finally:
             # Restore original headers
             scope["headers"] = original_headers
+            if cookie_token and original_get_user_info is not None:
+                # Restore original get_user_info value
+                self.config.authentication[0].config.get_user_info = original_get_user_info
