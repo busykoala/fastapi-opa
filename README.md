@@ -68,6 +68,13 @@ decides if the response has success or failure status.
 poetry add [--extras "graphql"] [--extras "saml"] fastapi-opa 
 ```
 
+On some os it might be required to lxml and xmlsec from source. This can be done
+using the following command:
+
+```
+PIP_NO_BINARY="lxml,xmlsec" poetry run pip install --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec
+```
+
 <a name="getting-started"/>
 
 ## How to get started
