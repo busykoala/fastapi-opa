@@ -26,9 +26,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install poetry
-        poetry install --no-root --extras "graphql" --extras "saml"
+        python -m poetry install --no-root --extras "graphql" --extras "saml"
         # Reinstall both from source using system libxml2
-        PIP_NO_BINARY="lxml,xmlsec" poetry run pip install --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec
+        PIP_NO_BINARY="lxml,xmlsec" python -m poetry run pip install --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec
     - name: Codestyle Checks
       run: |
         python -m poetry run ruff check
