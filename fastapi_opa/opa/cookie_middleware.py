@@ -1,12 +1,21 @@
 """Cookie-based authentication middleware implementation"""
-import logging
-from typing import Optional, List, Tuple
-from starlette.types import ASGIApp, Receive, Scope, Send
-from starlette.responses import RedirectResponse
 
-from fastapi_opa.opa.opa_middleware import OPAMiddleware
+import logging
+from typing import List
+from typing import Optional
+from typing import Tuple
+
+from starlette.responses import RedirectResponse
+from starlette.types import ASGIApp
+from starlette.types import Receive
+from starlette.types import Scope
+from starlette.types import Send
+
+from fastapi_opa.auth.auth_oidc import skip_user_info_for_request
+from fastapi_opa.models import AuthenticationResult
+from fastapi_opa.models import TokenCookieConfig
 from fastapi_opa.opa.opa_config import OPAConfig
-from fastapi_opa.models import AuthenticationResult, TokenCookieConfig
+from fastapi_opa.opa.opa_middleware import OPAMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +40,7 @@ class CookieAuthMiddleware:
             config=config,
             skip_endpoints=skip_endpoints,
             force_authorization=force_authorization,
-            max_buffer_size=max_buffer_size
+            max_buffer_size=max_buffer_size,
         )
 
     def _create_cookie_header(self, token: str) -> Tuple[bytes, bytes]:
@@ -41,7 +50,7 @@ class CookieAuthMiddleware:
                 f"{self.cookie_config.cookie_name}=",
                 "Path=/",
                 "Expires=Thu, 01 Jan 1970 00:00:00 GMT",
-                "Max-Age=0"
+                "Max-Age=0",
             ]
             logger.debug("Creating cookie removal header")
         else:  # Setting cookie case
@@ -51,19 +60,25 @@ class CookieAuthMiddleware:
             ]
 
             if self.cookie_config.cookie_domain:
-                cookie_parts.append(f"Domain={self.cookie_config.cookie_domain}")
+                cookie_parts.append(
+                    f"Domain={self.cookie_config.cookie_domain}"
+                )
             if self.cookie_config.cookie_secure:
                 cookie_parts.append("Secure")
             if self.cookie_config.cookie_httponly:
                 cookie_parts.append("HttpOnly")
             if self.cookie_config.cookie_samesite:
-                cookie_parts.append(f"SameSite={self.cookie_config.cookie_samesite}")
+                cookie_parts.append(
+                    f"SameSite={self.cookie_config.cookie_samesite}"
+                )
 
             logger.debug(f"Creating cookie header for token: {token[:10]}...")
 
         return b"set-cookie", "; ".join(cookie_parts).encode("latin-1")
 
-    def _extract_token_from_response(self, auth_result: AuthenticationResult) -> Optional[str]:
+    def _extract_token_from_response(
+        self, auth_result: AuthenticationResult
+    ) -> Optional[str]:
         """Extract token from authentication result"""
         if not auth_result.raw_tokens:
             logger.debug("No raw tokens in auth result")
@@ -84,7 +99,9 @@ class CookieAuthMiddleware:
         logger.debug("No suitable token found in auth result")
         return None
 
-    def _extract_token_from_cookie(self, headers: List[Tuple[bytes, bytes]]) -> Optional[str]:
+    def _extract_token_from_cookie(
+        self, headers: List[Tuple[bytes, bytes]]
+    ) -> Optional[str]:
         """Extract token from cookie header"""
         if not self.cookie_config.enabled:
             logger.debug("Cookie handling is disabled")
@@ -102,22 +119,26 @@ class CookieAuthMiddleware:
         logger.debug("No token found in cookies")
         return None
 
-    def _add_auth_header(self, headers: List[Tuple[bytes, bytes]], token: str) -> None:
+    def _add_auth_header(
+        self, headers: List[Tuple[bytes, bytes]], token: str
+    ) -> None:
         """Add authorization header"""
         if not any(name.lower() == b"authorization" for name, _ in headers):
-            headers.append(
-                (b"authorization", f"Bearer {token}".encode())
+            headers.append((b"authorization", f"Bearer {token}".encode()))
+            logger.debug(
+                f"Added Authorization header with token: {token[:10]}..."
             )
-            logger.debug(f"Added Authorization header with token: {token[:10]}...")
 
-    async def handle_token_expired(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def handle_token_expired(
+        self, scope: Scope, receive: Receive, send: Send
+    ) -> None:
         """Handle expired token by redirecting to authentication"""
         logger.info("Handling expired token - redirecting to authentication")
 
         # Create response with cookie removal
         response = RedirectResponse(
             url=self.config.authentication[0].authorization_endpoint,
-            status_code=303
+            status_code=303,
         )
         response.delete_cookie(
             key=self.cookie_config.cookie_name,
@@ -125,7 +146,7 @@ class CookieAuthMiddleware:
             domain=self.cookie_config.cookie_domain,
             secure=self.cookie_config.cookie_secure,
             httponly=self.cookie_config.cookie_httponly,
-            samesite=self.cookie_config.cookie_samesite
+            samesite=self.cookie_config.cookie_samesite,
         )
 
         await response(scope, receive, send)
@@ -136,7 +157,9 @@ class CookieAuthMiddleware:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
 
-        logger.debug(f"Processing request to: {scope.get('path', 'unknown path')}")
+        logger.debug(
+            f"Processing request to: {scope.get('path', 'unknown path')}"
+        )
 
         # Prepare request with cookie handling
         original_headers = scope.get("headers", [])
@@ -148,14 +171,16 @@ class CookieAuthMiddleware:
             scope["state"] = {}
 
         # Check for token in cookie if no Authorization header present
-        original_get_user_info = None
-        if not any(name.lower() == b"authorization" for name, _ in scope["headers"]):
+        skip_user_info_token = None
+        if not any(
+            name.lower() == b"authorization" for name, _ in scope["headers"]
+        ):
             cookie_token = self._extract_token_from_cookie(scope["headers"])
             if cookie_token:
                 self._add_auth_header(scope["headers"], cookie_token)
-                # Temporarily disable get_user_info if token comes from cookie
-                original_get_user_info = self.config.authentication[0].config.get_user_info
-                self.config.authentication[0].config.get_user_info = False
+                # Use thread-safe context variable to skip get_user_info for this request
+                # This avoids race conditions from modifying global config state
+                skip_user_info_token = skip_user_info_for_request.set(True)
 
         # Wrap send to intercept response
         response_started = False
@@ -177,7 +202,9 @@ class CookieAuthMiddleware:
                 headers = list(message.get("headers", []))
                 auth_result = scope.get("state", {}).get("auth_result")
 
-                if auth_result and isinstance(auth_result, AuthenticationResult):
+                if auth_result and isinstance(
+                    auth_result, AuthenticationResult
+                ):
                     if auth_result.success and auth_result.raw_tokens:
                         token = self._extract_token_from_response(auth_result)
                         if token:
@@ -196,6 +223,6 @@ class CookieAuthMiddleware:
         finally:
             # Restore original headers
             scope["headers"] = original_headers
-            if cookie_token and original_get_user_info is not None:
-                # Restore original get_user_info value
-                self.config.authentication[0].config.get_user_info = original_get_user_info
+            # Reset context variable if it was set (thread-safe cleanup)
+            if skip_user_info_token is not None:
+                skip_user_info_for_request.reset(skip_user_info_token)

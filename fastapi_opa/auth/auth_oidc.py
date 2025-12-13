@@ -1,6 +1,7 @@
 import json
 import logging
 from base64 import b64encode
+from contextvars import ContextVar
 from dataclasses import dataclass
 from dataclasses import field
 from json.decoder import JSONDecodeError
@@ -25,6 +26,12 @@ from fastapi_opa.auth.exceptions import OIDCException
 from fastapi_opa.models import AuthenticationResult
 
 logger = logging.getLogger(__name__)
+
+# Context variable for per-request override of get_user_info setting
+# This allows thread-safe, request-scoped control without modifying global config
+skip_user_info_for_request: ContextVar[bool] = ContextVar(
+    "skip_user_info_for_request", default=False
+)
 
 
 @dataclass
@@ -272,7 +279,13 @@ class OIDCAuthentication(AuthInterface):
 
                 validated_token = self.obtain_validated_token(alg, id_token)
 
-                if not self.config.get_user_info:
+                # Check both global config and per-request context variable
+                # The context variable allows thread-safe per-request override
+                should_skip_user_info = (
+                    not self.config.get_user_info
+                    or skip_user_info_for_request.get(False)
+                )
+                if should_skip_user_info:
                     return AuthenticationResult(
                         success=True,
                         validated_token=validated_token,
