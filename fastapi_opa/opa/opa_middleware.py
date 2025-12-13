@@ -37,9 +37,7 @@ class OwnReceive:
     See https://github.com/fastapi/fastapi/issues/394 for more details.
     """
 
-    def __init__(
-        self, receive: Receive, max_buffer_size: Optional[int] = None
-    ):
+    def __init__(self, receive: Receive, max_buffer_size: Optional[int] = None):
         self.receive = receive
         self.buffer = []
         self._complete = False
@@ -113,30 +111,42 @@ class OPAMiddleware:
 
             # authenticate user or get redirect to identity provider
             successful = False
-            user_info_or_auth_redirect = None
+            auth_result = None
+            user_info = None
             for auth in self.config.authentication:
                 try:
-                    user_info_or_auth_redirect = auth.authenticate(
+                    auth_result = auth.authenticate(
                         request, self.config.accepted_methods
                     )
-                    if asyncio.iscoroutine(user_info_or_auth_redirect):
-                        user_info_or_auth_redirect = (
-                            await user_info_or_auth_redirect
-                        )
-                    if isinstance(user_info_or_auth_redirect, AuthenticationResult):
-                        successful = user_info_or_auth_redirect.success
+                    if asyncio.iscoroutine(auth_result):
+                        auth_result = await auth_result
+
+                    # Handle AuthenticationResult (new style)
+                    if isinstance(auth_result, AuthenticationResult):
+                        successful = auth_result.success
                         if successful:
                             # Store auth_result in scope for cookie middleware
-                            scope["state"]["auth_result"] = user_info_or_auth_redirect
+                            scope["state"]["auth_result"] = auth_result
+                            # Extract user info from the result
+                            user_info = auth_result.model_dump()
+                            if auth_result.user_info:
+                                user_info = auth_result.user_info.copy()
+                            elif auth_result.validated_token:
+                                user_info = auth_result.validated_token.copy()
                             break
+                    # Handle dict (legacy style for backwards compatibility)
+                    elif isinstance(auth_result, dict):
+                        successful = True
+                        user_info = auth_result.copy()
+                        break
                 except AuthenticationException:
                     logger.error("AuthenticationException raised on login")
 
             # Some authentication flows require a prior redirect to id provider
-            if isinstance(user_info_or_auth_redirect, RedirectResponse):
-                return await user_info_or_auth_redirect(scope, receive, send)
+            if isinstance(auth_result, RedirectResponse):
+                return await auth_result(scope, receive, send)
 
-            if not successful:
+            if not successful or user_info is None:
                 return await self.get_unauthorized_response(
                     scope, receive, send
                 )
@@ -150,20 +160,20 @@ class OPAMiddleware:
                         request.url.path, injectable.skip_endpoints
                     ):
                         continue
-                    user_info_or_auth_redirect.model_dump()[
-                        injectable.key
-                    ] = await injectable.extract(request)
+                    user_info[injectable.key] = await injectable.extract(
+                        request
+                    )
 
-            user_info_or_auth_redirect.model_dump()["request_method"] = scope.get("method")
-            user_info_or_auth_redirect.model_dump()["request_path"] = scope.get("path").split("/")[1:]
-            data = {"input": user_info_or_auth_redirect.model_dump()}
+            user_info["request_method"] = scope.get("method")
+            user_info["request_path"] = scope.get("path").split("/")[1:]
+            data = {"input": user_info}
 
             if not self.force_authorization:
                 opa_decision = requests.post(
                     self.config.opa_url, data=json.dumps(data), timeout=5
                 )
                 return await self.get_decision(
-                    opa_decision, scope, own_receive, receive, send
+                    scope, own_receive, receive, send, opa_decision
                 )
             else:
                 scope["state"]["user_info"] = data["input"]
@@ -186,15 +196,19 @@ class OPAMiddleware:
         own_receive: OwnReceive,
         receive: Receive,
         send: Send,
-        opa_decision = None,
+        opa_decision=None,
     ):
         is_authorized = self.force_authorization
         if not is_authorized:
             if opa_decision.status_code != 200:
-                logger.error(f"Returned with status {opa_decision.status_code}.")
+                logger.error(
+                    f"Returned with status {opa_decision.status_code}."
+                )
                 return self.get_unauthorized_response(scope, receive, send)
             try:
-                is_authorized = opa_decision.json().get("result", {}).get("allow")
+                is_authorized = (
+                    opa_decision.json().get("result", {}).get("allow")
+                )
             except JSONDecodeError:
                 logger.error("Unable to decode OPA response.")
                 return self.get_unauthorized_response(scope, receive, send)

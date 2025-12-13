@@ -2,6 +2,8 @@ import datetime
 from typing import Any
 from typing import Dict
 from typing import Optional
+from urllib.parse import parse_qs
+from urllib.parse import urlparse
 
 import jwt
 import pytest
@@ -30,9 +32,23 @@ def test_auth_redirect_uri(mocker):
     config = oidc_config()
     oidc = OIDCAuthentication(config)
     response = oidc.get_auth_redirect_uri(callback_uri=callback_uri)
-    expected_url = "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/auth?response_type=code&scope=openid email profile&client_id=example-client&redirect_uri=http%3A//fastapi-app.busykoala.ch/test/path"  # noqa
 
-    assert expected_url == response
+    # Parse the URL and verify parameters
+    parsed = urlparse(response)
+    params = parse_qs(parsed.query)
+
+    assert parsed.scheme == "http"
+    assert parsed.netloc == "keycloak.busykoala.ch"
+    assert (
+        parsed.path == "/auth/realms/example-realm/protocol/openid-connect/auth"
+    )
+    assert params["response_type"] == ["code"]
+    assert params["scope"] == ["openid email profile"]
+    assert params["client_id"] == ["example-client"]
+    assert "redirect_uri" in params
+    # PKCE parameters
+    assert "code_challenge" in params
+    assert params["code_challenge_method"] == ["S256"]
 
 
 @pytest.mark.asyncio
@@ -50,8 +66,23 @@ async def test_auth_redirect_uri_from_headers(mocker):
     request._headers = Headers(headers)
     request._url = URL(call_uri)
     response = await oidc.authenticate(request)
-    expected_url = "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/auth?response_type=code&scope=openid%20email%20profile&client_id=example-client&redirect_uri=https%3A//foo.bar.ch/test/path"  # noqa
-    assert expected_url == response.headers["location"]
+
+    # Parse the redirect URL and verify parameters
+    parsed = urlparse(response.headers["location"])
+    params = parse_qs(parsed.query)
+
+    assert parsed.scheme == "http"
+    assert parsed.netloc == "keycloak.busykoala.ch"
+    assert (
+        parsed.path == "/auth/realms/example-realm/protocol/openid-connect/auth"
+    )
+    assert params["response_type"] == ["code"]
+    assert params["client_id"] == ["example-client"]
+    # Verify redirect_uri uses forwarded headers (parse_qs decodes the URL)
+    assert "https://foo.bar.ch" in params["redirect_uri"][0]
+    # PKCE parameters
+    assert "code_challenge" in params
+    assert params["code_challenge_method"] == ["S256"]
 
 
 def test_get_auth_token(mocker):
@@ -68,20 +99,20 @@ def test_get_auth_token(mocker):
     )
     oidc.get_auth_token("example_code", "callback_uri")
 
-    expected = {
-        "data": {
-            "grant_type": "authorization_code",
-            "code": "example_code",
-            "redirect_uri": "callback_uri",
-        },
-        "timeout": 5,
-        "headers": {"Authorization": "Basic ZXhhbXBsZS1jbGllbnQ6c2VjcmV0"},
-    }
-
     for call in mock.call_args_list:
         args, kwargs = call
-        for _ in args:
-            assert expected == kwargs
+        data = kwargs.get("data")
+        # Verify required fields
+        assert data["grant_type"] == "authorization_code"
+        assert data["code"] == "example_code"
+        assert data["redirect_uri"] == "callback_uri"
+        # PKCE: code_verifier must be present
+        assert "code_verifier" in data
+        assert len(data["code_verifier"]) > 0
+        # For confidential clients with auth header, client_id should not be in data
+        assert kwargs["timeout"] == 5
+        assert "Authorization" in kwargs["headers"]
+        assert kwargs["headers"]["Authorization"].startswith("Basic ")
 
 
 @freeze_time("2021-04-04 12:12:12")
@@ -216,6 +247,8 @@ def get_jwks():
 
 @pytest.mark.asyncio
 async def test_token_type_not_accepted(mocker):
+    from fastapi_opa.models import AuthenticationResult
+
     mocker.patch(
         "fastapi_opa.auth.auth_oidc.requests.get",
         return_value=oidc_well_known_response(),
@@ -230,12 +263,16 @@ async def test_token_type_not_accepted(mocker):
         200, url=url, query_params={"code": "abc"}, headers={}
     )
 
-    with pytest.raises(OIDCException):
-        await oidc.authenticate(request, accepted_methods=["access_token"])
+    result = await oidc.authenticate(request, accepted_methods=["access_token"])
+    assert isinstance(result, AuthenticationResult)
+    assert result.success is False
+    assert "id token is not accepted" in result.error
 
     # Ensure that we do not accept access tokens
     request = mock_response(
         200, url=url, query_params={}, headers={"Authorization": "abc"}
     )
-    with pytest.raises(OIDCException):
-        await oidc.authenticate(request, accepted_methods=["id_token"])
+    result = await oidc.authenticate(request, accepted_methods=["id_token"])
+    assert isinstance(result, AuthenticationResult)
+    assert result.success is False
+    assert "access token is not accepted" in result.error
