@@ -97,7 +97,10 @@ def test_get_auth_token(mocker):
         "fastapi_opa.auth.auth_oidc.requests.post",
         return_value=mock_response(200, {}),
     )
-    oidc.get_auth_token("example_code", "callback_uri")
+
+    # Generate a code_verifier for this test
+    test_code_verifier = "test_code_verifier_12345"
+    oidc.get_auth_token("example_code", "callback_uri", test_code_verifier)
 
     for call in mock.call_args_list:
         args, kwargs = call
@@ -108,7 +111,7 @@ def test_get_auth_token(mocker):
         assert data["redirect_uri"] == "callback_uri"
         # PKCE: code_verifier must be present
         assert "code_verifier" in data
-        assert len(data["code_verifier"]) > 0
+        assert data["code_verifier"] == test_code_verifier
         # For confidential clients with auth header, client_id should not be in data
         assert kwargs["timeout"] == 5
         assert "Authorization" in kwargs["headers"]
