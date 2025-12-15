@@ -14,7 +14,7 @@ keywords = [
     "saml",
     "pkce",
 ]
-exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_saml.py"]
+exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_oidc_pkce.py", "fastapi_opa/example_saml.py"]
 
 [tool.poetry.dependencies]
 python = ">= 3.8, < 4.0"
