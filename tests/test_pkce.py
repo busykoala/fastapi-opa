@@ -6,6 +6,9 @@ from unittest.mock import patch
 import pytest
 from authlib.oauth2.rfc7636 import create_s256_code_challenge
 
+from fastapi_opa.auth.auth_oidc import PKCE_CODE_VERIFIER_DEFAULT_LENGTH
+from fastapi_opa.auth.auth_oidc import PKCE_CODE_VERIFIER_MAX_LENGTH
+from fastapi_opa.auth.auth_oidc import PKCE_CODE_VERIFIER_MIN_LENGTH
 from fastapi_opa.auth.auth_oidc import OIDCAuthentication
 from fastapi_opa.auth.auth_oidc import OIDCConfig
 from fastapi_opa.auth.exceptions import OIDCException
@@ -82,6 +85,110 @@ class TestOIDCConfigPKCE:
 
         assert config.is_public_client is True
         assert config.client_secret is None
+
+    def test_default_code_verifier_length(self):
+        """Verify default code_verifier_length is 128 (max per RFC 7636)"""
+        with patch("fastapi_opa.auth.auth_oidc.requests.get") as mock_get:
+            mock_get.return_value = oidc_well_known_response()
+            config = OIDCConfig(
+                well_known_endpoint="http://example.com/.well-known",
+                app_uri="http://app.example.com",
+                client_id="test-client",
+                client_secret="test-secret",
+            )
+
+        assert config.code_verifier_length == PKCE_CODE_VERIFIER_DEFAULT_LENGTH
+        assert config.code_verifier_length == 128
+
+    def test_custom_code_verifier_length(self, mocker):
+        """Verify code_verifier_length can be customized within RFC 7636 range"""
+        mocker.patch(
+            "fastapi_opa.auth.auth_oidc.requests.get",
+            return_value=oidc_well_known_response(),
+        )
+        config = OIDCConfig(
+            well_known_endpoint="http://example.com/.well-known",
+            app_uri="http://app.example.com",
+            client_id="test-client",
+            client_secret="test-secret",
+            code_verifier_length=64,
+        )
+        oidc = OIDCAuthentication(config)
+
+        code_verifier, _ = oidc._generate_pkce_pair()
+
+        assert config.code_verifier_length == 64
+        assert len(code_verifier) == 64
+
+    def test_code_verifier_length_minimum_valid(self, mocker):
+        """Verify minimum code_verifier_length (43) is accepted per RFC 7636"""
+        mocker.patch(
+            "fastapi_opa.auth.auth_oidc.requests.get",
+            return_value=oidc_well_known_response(),
+        )
+        config = OIDCConfig(
+            well_known_endpoint="http://example.com/.well-known",
+            app_uri="http://app.example.com",
+            client_id="test-client",
+            client_secret="test-secret",
+            code_verifier_length=PKCE_CODE_VERIFIER_MIN_LENGTH,
+        )
+        oidc = OIDCAuthentication(config)
+
+        code_verifier, _ = oidc._generate_pkce_pair()
+
+        assert len(code_verifier) == 43
+
+    def test_code_verifier_length_maximum_valid(self, mocker):
+        """Verify maximum code_verifier_length (128) is accepted per RFC 7636"""
+        mocker.patch(
+            "fastapi_opa.auth.auth_oidc.requests.get",
+            return_value=oidc_well_known_response(),
+        )
+        config = OIDCConfig(
+            well_known_endpoint="http://example.com/.well-known",
+            app_uri="http://app.example.com",
+            client_id="test-client",
+            client_secret="test-secret",
+            code_verifier_length=PKCE_CODE_VERIFIER_MAX_LENGTH,
+        )
+        oidc = OIDCAuthentication(config)
+
+        code_verifier, _ = oidc._generate_pkce_pair()
+
+        assert len(code_verifier) == 128
+
+    def test_code_verifier_length_too_short_rejected(self):
+        """Verify code_verifier_length below 43 is rejected per RFC 7636"""
+        with pytest.raises(OIDCException) as exc_info:
+            OIDCConfig(
+                well_known_endpoint="http://example.com/.well-known",
+                app_uri="http://app.example.com",
+                client_id="test-client",
+                client_secret="test-secret",
+                code_verifier_length=42,
+            )
+
+        assert "code_verifier_length must be between" in str(exc_info.value)
+        assert "43" in str(exc_info.value)
+        assert "128" in str(exc_info.value)
+        assert "RFC 7636" in str(exc_info.value)
+
+    def test_code_verifier_length_too_long_rejected(self):
+        """Verify code_verifier_length above 128 is rejected per RFC 7636"""
+        with pytest.raises(OIDCException) as exc_info:
+            OIDCConfig(
+                well_known_endpoint="http://example.com/.well-known",
+                app_uri="http://app.example.com",
+                client_id="test-client",
+                client_secret="test-secret",
+                code_verifier_length=129,
+            )
+
+        assert "code_verifier_length must be between" in str(exc_info.value)
+        assert "43" in str(exc_info.value)
+        assert "128" in str(exc_info.value)
+        assert "RFC 7636" in str(exc_info.value)
 
 
 class TestPKCETokenRequest:
