@@ -1,13 +1,15 @@
 from typing import Dict
-from fastapi import FastAPI, Request
-from authlib.oauth2.rfc7636 import create_s256_code_challenge
+
 from authlib.common.security import generate_token
+from authlib.oauth2.rfc7636 import create_s256_code_challenge
+from fastapi import FastAPI
+from fastapi import Request
 
 from fastapi_opa import OPAConfig
 from fastapi_opa.auth import OIDCAuthentication
 from fastapi_opa.auth import OIDCConfig
-from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
 from fastapi_opa.models import TokenCookieConfig
+from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
 
 # Generate PKCE values using Authlib's built-in functions
 code_verifier = generate_token(128)
@@ -36,7 +38,7 @@ oidc_config = OIDCConfig(
     grant_type="authorization_code",  # Required for PKCE
     # Customisable authentication parameters for the token request
     use_auth_header=False,
-    is_public_client=False
+    is_public_client=False,
 )
 
 oidc_auth = OIDCAuthentication(oidc_config)
@@ -53,10 +55,10 @@ app.add_middleware(
     config=opa_config,
     force_authorization=True,
     cookie_config=TokenCookieConfig(
-        cookie_name="access_token",
-        cookie_secure=True
-    )
+        cookie_name="access_token", cookie_secure=True
+    ),
 )
+
 
 @app.get("/")
 async def root(request: Request) -> Dict:

@@ -40,7 +40,8 @@ def test_auth_redirect_uri(mocker):
     assert parsed.scheme == "http"
     assert parsed.netloc == "keycloak.busykoala.ch"
     assert (
-        parsed.path == "/auth/realms/example-realm/protocol/openid-connect/auth"
+        parsed.path
+        == "/auth/realms/example-realm/protocol/openid-connect/auth"
     )
     assert params["response_type"] == ["code"]
     assert params["scope"] == ["openid email profile"]
@@ -74,7 +75,8 @@ async def test_auth_redirect_uri_from_headers(mocker):
     assert parsed.scheme == "http"
     assert parsed.netloc == "keycloak.busykoala.ch"
     assert (
-        parsed.path == "/auth/realms/example-realm/protocol/openid-connect/auth"
+        parsed.path
+        == "/auth/realms/example-realm/protocol/openid-connect/auth"
     )
     assert params["response_type"] == ["code"]
     assert params["client_id"] == ["example-client"]
@@ -266,7 +268,9 @@ async def test_token_type_not_accepted(mocker):
         200, url=url, query_params={"code": "abc"}, headers={}
     )
 
-    result = await oidc.authenticate(request, accepted_methods=["access_token"])
+    result = await oidc.authenticate(
+        request, accepted_methods=["access_token"]
+    )
     assert isinstance(result, AuthenticationResult)
     assert result.success is False
     assert "id token is not accepted" in result.error
