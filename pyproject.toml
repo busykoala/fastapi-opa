@@ -27,10 +27,16 @@ python3-saml = { version = "*", optional = true }
 python-multipart = { version = "*", optional = true }
 Authlib = { version = "*", optional = true }
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.extras]
+graphql = ["graphene"]
+saml = ["python3-saml", "python-multipart"]
+authlib = ["Authlib"]
+
+[tool.poetry.group.dev.dependencies]
 bandit = "*"
 pytest = "*"
 pytest-mock = "*"
+pytest-timeout = "^2.3.1"
 mock = "*"
 freezegun = "*"
 pytest-asyncio = "*"
@@ -38,14 +44,7 @@ nest-asyncio = "*"
 httpx = "*"
 ruff = "*"
 vale = "^2.20.2"
-
-[tool.poetry.extras]
-graphql = ["graphene"]
-saml = ["python3-saml", "python-multipart"]
-authlib = ["Authlib"]
-
-[tool.poetry.group.dev.dependencies]
-pytest-timeout = "^2.3.1"
+backports-asyncio-runner = {version = "^1.2.0", python = "<3.11"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

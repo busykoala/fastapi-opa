@@ -208,7 +208,9 @@ class OIDCAuthentication(AuthInterface):
         callback_uri = urlunparse(
             [
                 (
-                    request.headers.get("x-forwarded-proto", request.url.scheme)
+                    request.headers.get(
+                        "x-forwarded-proto", request.url.scheme
+                    )
                     if self.config.trust_x_headers
                     else request.url.scheme
                 ),

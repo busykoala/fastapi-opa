@@ -383,7 +383,9 @@ class TestOIDCConfigEndpoints:
         oidc = OIDCAuthentication(config)
 
         assert oidc.issuer == "http://idp.example.com"
-        assert oidc.authorization_endpoint == "http://idp.example.com/authorize"
+        assert (
+            oidc.authorization_endpoint == "http://idp.example.com/authorize"
+        )
         assert oidc.token_endpoint == "http://idp.example.com/token"
         assert oidc.jwks_uri == "http://idp.example.com/jwks"
 

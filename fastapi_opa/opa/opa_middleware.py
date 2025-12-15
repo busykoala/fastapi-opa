@@ -37,7 +37,9 @@ class OwnReceive:
     See https://github.com/fastapi/fastapi/issues/394 for more details.
     """
 
-    def __init__(self, receive: Receive, max_buffer_size: Optional[int] = None):
+    def __init__(
+        self, receive: Receive, max_buffer_size: Optional[int] = None
+    ):
         self.receive = receive
         self.buffer = []
         self._complete = False
