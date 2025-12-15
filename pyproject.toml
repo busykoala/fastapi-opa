@@ -1,43 +1,50 @@
 [tool.poetry]
 name = "fastapi-opa"
-version = "2.0.3"
+version = "2.0.4"
 description = "Fastapi OPA middleware incl. auth flow."
 authors = ["Matthias Osswald <info@busykoala.io>"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
 repository = "https://github.com/busykoala/fastapi-opa"
-keywords = ["fastapi", "oidc", "authentication", "authorization", "saml"]
-exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_saml.py"]
+keywords = [
+    "fastapi",
+    "oidc",
+    "authentication",
+    "authorization",
+    "saml",
+    "pkce",
+]
+exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_oidc_pkce.py", "fastapi_opa/example_saml.py"]
 
 [tool.poetry.dependencies]
 python = ">= 3.8, < 4.0"
-fastapi = ">= 0.109.2"
+fastapi = { extras = ["standard"], version = "^0.115.0" }
 itsdangerous = "*"
 requests = "*"
-PyJWT = {extras = ["crypto"], version = ">= 2.4"}
-graphene = {version = "^2", optional = true}
-python3-saml = {version = "*", optional = true}
-python-multipart = {version = "*", optional = true}
+PyJWT = { extras = ["crypto"], version = ">= 2.4" }
+graphene = { version = "^2", optional = true }
+python3-saml = { version = "*", optional = true }
+python-multipart = { version = "*", optional = true }
+Authlib = { version = "*", optional = true }
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.extras]
+graphql = ["graphene"]
+saml = ["python3-saml", "python-multipart"]
+authlib = ["Authlib"]
+
+[tool.poetry.group.dev.dependencies]
 bandit = "*"
 pytest = "*"
 pytest-mock = "*"
+pytest-timeout = "^2.3.1"
 mock = "*"
 freezegun = "*"
-Authlib = "*"
 pytest-asyncio = "*"
 nest-asyncio = "*"
 httpx = "*"
 ruff = "*"
 vale = "^2.20.2"
-
-[tool.poetry.extras]
-graphql = ["graphene"]
-saml = ["python3-saml", "python-multipart"]
-
-[tool.poetry.group.dev.dependencies]
-pytest-timeout = "^2.3.1"
+backports-asyncio-runner = {version = "^1.2.0", python = "<3.11"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
