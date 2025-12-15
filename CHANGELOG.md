@@ -5,6 +5,9 @@
 - Add a devcontainer and Makefile for reproducible local development.
 - Bump packages
 
+## [2.0.4] - 2025-12-15
+- Add support for PKCE in OIDC scenario with optional cookie-based bearer token.
+
 ## [2.0.3] - 2025-01-01
 - Fix request body handling for large request bodies.
 
