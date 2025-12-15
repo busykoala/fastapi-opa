@@ -34,6 +34,12 @@ skip_user_info_for_request: ContextVar[bool] = ContextVar(
 )
 
 
+# RFC 7636 Section 4.1: code_verifier length must be 43-128 characters
+PKCE_CODE_VERIFIER_MIN_LENGTH = 43
+PKCE_CODE_VERIFIER_MAX_LENGTH = 128
+PKCE_CODE_VERIFIER_DEFAULT_LENGTH = 128  # Using max for maximum entropy
+
+
 @dataclass
 class OIDCConfig:
     """
@@ -75,6 +81,10 @@ class OIDCConfig:
             Authorization code response type
         grant_type: str, default="authorization_code"
             Grant type for the OIDC flow
+        code_verifier_length: int, default=128
+            Length of the PKCE code_verifier in characters.
+            Per RFC 7636, must be between 43 and 128 characters.
+            Default is 128 for maximum entropy.
     """
 
     app_uri: str
@@ -93,6 +103,9 @@ class OIDCConfig:
     code_challenge_method: str = field(default="S256")
     response_type: str = field(default="code")
     grant_type: str = field(default="authorization_code")
+    code_verifier_length: int = field(
+        default=PKCE_CODE_VERIFIER_DEFAULT_LENGTH
+    )
 
     # OIDC endpoints configuration
     well_known_endpoint: str = field(default="")
@@ -108,6 +121,16 @@ class OIDCConfig:
         if not self.is_public_client and not self.client_secret:
             raise OIDCException(
                 "client_secret is required for confidential clients"
+            )
+        if not (
+            PKCE_CODE_VERIFIER_MIN_LENGTH
+            <= self.code_verifier_length
+            <= PKCE_CODE_VERIFIER_MAX_LENGTH
+        ):
+            raise OIDCException(
+                f"code_verifier_length must be between "
+                f"{PKCE_CODE_VERIFIER_MIN_LENGTH} and "
+                f"{PKCE_CODE_VERIFIER_MAX_LENGTH} per RFC 7636"
             )
 
 
@@ -134,8 +157,13 @@ class OIDCAuthentication(AuthInterface):
             raise OIDCException("Endpoints not provided")
 
     def _generate_pkce_pair(self) -> tuple:
-        """Generate a new PKCE code_verifier and code_challenge pair."""
-        code_verifier = generate_token(128)
+        """Generate a new PKCE code_verifier and code_challenge pair.
+
+        Per RFC 7636, the code_verifier is a high-entropy cryptographic
+        random string with 43-128 characters. The length is configurable
+        via OIDCConfig.code_verifier_length.
+        """
+        code_verifier = generate_token(self.config.code_verifier_length)
         code_challenge = create_s256_code_challenge(code_verifier)
         return code_verifier, code_challenge
 
