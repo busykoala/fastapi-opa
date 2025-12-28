@@ -1,11 +1,12 @@
 injectable
+injectables
 GraphQL
 Keycloak
 SAML
-saml
 OIDC
 middleware
 Open Policy Agent
 FastAPI
-fastapi
+uv
 docstrings
+OPA

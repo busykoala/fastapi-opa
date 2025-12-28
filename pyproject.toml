@@ -1,47 +1,50 @@
-[tool.poetry]
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
 name = "fastapi-opa"
 version = "2.0.3"
 description = "Fastapi OPA middleware incl. auth flow."
-authors = ["Matthias Osswald <info@busykoala.io>"]
-license = "GPL-3.0-or-later"
+authors = [{name = "Matthias Osswald", email = "info@busykoala.io"}]
+license = {text = "GPL-3.0-or-later"}
 readme = "README.md"
-repository = "https://github.com/busykoala/fastapi-opa"
+requires-python = ">=3.8,<4.0"
 keywords = ["fastapi", "oidc", "authentication", "authorization", "saml"]
-exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_saml.py"]
+dependencies = [
+    "fastapi>=0.109.2",
+    "itsdangerous",
+    "requests",
+    "PyJWT[crypto]>=2.4",
+]
 
-[tool.poetry.dependencies]
-python = ">= 3.8, < 4.0"
-fastapi = ">= 0.109.2"
-itsdangerous = "*"
-requests = "*"
-PyJWT = {extras = ["crypto"], version = ">= 2.4"}
-graphene = {version = "^2", optional = true}
-python3-saml = {version = "*", optional = true}
-python-multipart = {version = "*", optional = true}
-
-[tool.poetry.dev-dependencies]
-bandit = "*"
-pytest = "*"
-pytest-mock = "*"
-mock = "*"
-freezegun = "*"
-Authlib = "*"
-pytest-asyncio = "*"
-nest-asyncio = "*"
-httpx = "*"
-ruff = "*"
-vale = "^2.20.2"
-
-[tool.poetry.extras]
-graphql = ["graphene"]
+[project.optional-dependencies]
+graphql = ["graphene>=2,<3"]
 saml = ["python3-saml", "python-multipart"]
 
-[tool.poetry.group.dev.dependencies]
-pytest-timeout = "^2.3.1"
+[project.urls]
+Repository = "https://github.com/busykoala/fastapi-opa"
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[dependency-groups]
+dev = [
+    "Authlib",
+    "bandit",
+    "freezegun",
+    "httpx",
+    "mock",
+    "nest-asyncio",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-mock",
+    "pytest-timeout>=2.3.1",
+    "ruff",
+    "setuptools>=78.1.1; python_version >= '3.9'",
+    "pysentry-rs; python_version >= '3.9'",
+    "vale>=2.20.2",
+]
+
+[tool.hatch.build]
+exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_saml.py"]
 
 [tool.ruff]
 line-length = 79

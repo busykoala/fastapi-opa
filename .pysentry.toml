@@ -1,0 +1,6 @@
+version = 1
+
+[ignore]
+# PYSEC-2025-49: setuptools has no fixed build for Python 3.8; ignore while 3.8 stays supported.
+ids = ["PYSEC-2025-49"]
+while_no_fix = ["PYSEC-2025-49"]

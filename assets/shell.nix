@@ -4,7 +4,7 @@ pkgs.mkShell rec {
 
   buildInputs = [
     pkgs.python3
-    pkgs.poetry
+    pkgs.uv
     pkgs.zlib
     pkgs.ruff
     pkgs.pkg-config
