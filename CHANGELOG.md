@@ -1,5 +1,9 @@
 # Change Log
 
+## [2.0.4] - 2025-12-28
+- Switch project tooling from Poetry to uv for dependency management and QA workflows.
+- Add a devcontainer and Makefile for reproducible local development.
+- Bump packages
 
 ## [2.0.3] - 2025-01-01
 - Fix request body handling for large request bodies.

@@ -1,8 +1,8 @@
-# Open Policy Agent middleware for FastAPI
+# Open Policy Agent (OPA) middleware for FastAPI
 
 ## Table of contents
 - [Contributors](#contributors)
-- [What does fastapi-opa do](#about)
+- [What does FastAPI-OPA do](#about)
 - [Installation](#installation)
 - [How to get started](#getting-started)
 - [Open Policy Agent](#opa)
@@ -12,6 +12,9 @@
   - [SAML authentication](#saml-auth)
 - [Custom payload enrichment](#custom-payload-enrichment)
   - [GraphQL enrichment](#gql-enrichment)
+- [Development](#development)
+
+## Development
 
 <a name="contributors"/>
 
@@ -49,26 +52,26 @@ Thanks to all the contributors below. Furthermore thanks for raising issues.
 
 <a name="about"/>
 
-## What does fastapi-opa do
+## What does FastAPI-OPA do
 
-The FastAPI extension `fastapi-opa` allows to add login flows and integrates
-Open Policy Agent to your app.
+The FastAPI extension `fastapi-opa` adds login flows and integrates Open Policy
+Agent with your app.
 
 ![Flow Diagram](https://raw.githubusercontent.com/busykoala/fastapi-opa/master/assets/diagram.png)
 
-The middleware redirects the request to the identity provider. After the
-authentication it validates the token. Using the token, Open Policy Agent
-decides if the response has success or failure status.
+The middleware redirects each request to the identity provider and then
+validates the returned token. Open Policy Agent uses that token to decide
+whether the response succeeds or fails.
 
 <a name="installation"/>
 
 ## Installation
 
 ```bash
-poetry add [--extras "graphql"] [--extras "saml"] fastapi-opa 
+uv add fastapi-opa --extra graphql --extra saml
 
-# possibly install these dependencies without binary wheels
-PIP_NO_BINARY="lxml,xmlsec" poetry run pip install --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec
+# install these dependencies without binary wheels when needed
+PIP_NO_BINARY="lxml,xmlsec" uv run pip install --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec
 ```
 
 <a name="getting-started"/>
@@ -192,7 +195,7 @@ the implementation of the OIDC Authentication.
 
 ### SAML authentication
 
-For the saml implementation create your certs using
+For the SAML implementation create your certs using
 `openssl req -new -x509 -days 3652 -nodes -out sp.crt -keyout sp.key` and
 add the keys to the sp section of your `settings.json`. Checkout the test
 settings to get an idea (`tests/test_data/saml/*.json`).

@@ -10,7 +10,7 @@ maintain stability and continually make improvements.
 - Contribute code by opening a pull request
 - Improve the documentation
 
-## Contribute code
+## How to contribute code changes
 
 When contributing code make sure that:
 - you test the code automatically and manually
@@ -22,13 +22,15 @@ When contributing code make sure that:
 - you put third party libraries into extras if not necessary for every use case
 - you provide documentation
 
-## Testing & code style
+## Testing and code style checks
 
 Whenever possible a second person reviews pull requests.
 Furthermore an automated test pipeline runs with:
 - `pytest` to execute automated tests
 - `ruff` for consistent code style
 - `bandit` to find well known vulnerabilities
+
+Before opening a pull request, run `make ci-qa` to sync dependencies with uv and execute the full lint and test suite. A development container mirrors the CI setup to keep local runs consistent.
 
 ## Documentation
 
@@ -40,7 +42,7 @@ on. Other than that critical endpoints use type hinting. Define interfaces for
 all code used for implementing the package.
 
 Use [vale](https://vale.sh/) to lint `README.md` and `CONTRIBUTING.md`.
-Run `poetry run vale README.md CONTRIBUTING.md` to get the errors,
+Run `uv run vale README.md CONTRIBUTING.md` to get the errors,
 warnings and suggestions.
 
 ## Commits and pull requests
