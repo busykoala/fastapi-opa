@@ -9,7 +9,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
-from urllib.parse import quote
+from urllib.parse import urlencode
 from urllib.parse import urlunparse
 
 import jwt
@@ -109,9 +109,7 @@ class OIDCConfig:
     code_challenge_method: str = field(default="S256")
     response_type: str = field(default="code")
     grant_type: str = field(default="authorization_code")
-    code_verifier_length: int = field(
-        default=PKCE_CODE_VERIFIER_DEFAULT_LENGTH
-    )
+    code_verifier_length: int = field(default=PKCE_CODE_VERIFIER_DEFAULT_LENGTH)
 
     # OIDC endpoints configuration
     well_known_endpoint: str = field(default="")
@@ -259,9 +257,7 @@ class OIDCAuthentication(AuthInterface):
         callback_uri = urlunparse(
             [
                 (
-                    request.headers.get(
-                        "x-forwarded-proto", request.url.scheme
-                    )
+                    request.headers.get("x-forwarded-proto", request.url.scheme)
                     if self.config.trust_x_headers
                     else request.url.scheme
                 ),
@@ -291,13 +287,18 @@ class OIDCAuthentication(AuthInterface):
             # Store code_verifier for later retrieval
             self._store_pkce_verifier(pkce_state, code_verifier)
 
-            # Build query params, preserving existing ones
-            query_params = "&".join(
-                f"{k}={v}" for k, v in request.query_params.items()
+            # Build query params safely using urlencode to prevent injection
+            # This properly encodes special characters like &, =, etc.
+            existing_params = dict(request.query_params.items())
+            query_string = urlencode(existing_params) if existing_params else ""
+            redirect_callback = (
+                f"{callback_uri}?{query_string}"
+                if query_string
+                else callback_uri
             )
             return RedirectResponse(
                 url=self.get_auth_redirect_uri(
-                    f"{callback_uri}?{query_params}",
+                    redirect_callback,
                     code_challenge=code_challenge,
                     state=pkce_state,
                 ),
@@ -398,17 +399,20 @@ class OIDCAuthentication(AuthInterface):
             # Fallback: generate new PKCE pair (for backwards compatibility)
             _, code_challenge = self._generate_pkce_pair()
 
+        # Build params dict - urlencode will handle proper encoding
         params = {
             "response_type": self.config.response_type,
             "scope": self.config.scope,
             "client_id": self.config.client_id,
-            "redirect_uri": quote(callback_uri),
+            "redirect_uri": callback_uri,  # urlencode handles encoding
             "code_challenge": code_challenge,
             "code_challenge_method": self.config.code_challenge_method,
         }
         if state:
             params["state"] = state
-        query = "&".join(f"{k}={v}" for k, v in params.items())
+        # Use urlencode for safe query string construction
+        # This prevents injection attacks via special characters
+        query = urlencode(params)
         return f"{self.authorization_endpoint}?{query}"
 
     def obtain_validated_token(self, alg: str, id_token: str) -> Dict:
