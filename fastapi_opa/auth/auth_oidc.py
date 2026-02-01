@@ -23,6 +23,8 @@ from starlette.responses import RedirectResponse
 
 from fastapi_opa.auth.auth_interface import AuthInterface
 from fastapi_opa.auth.exceptions import OIDCException
+from fastapi_opa.auth.pkce_store import InMemoryPKCEStore
+from fastapi_opa.auth.pkce_store import PKCEStoreProtocol
 from fastapi_opa.models import AuthenticationResult
 
 logger = logging.getLogger(__name__)
@@ -116,6 +118,11 @@ class OIDCConfig:
     userinfo_endpoint: str = field(default="")
     get_user_info: bool = field(default=False)
 
+    # PKCE store configuration
+    # If None, uses InMemoryPKCEStore with default settings
+    # For multi-process deployments, provide a custom store (e.g., Redis)
+    pkce_store: PKCEStoreProtocol | None = field(default=None)
+
     def __post_init__(self):
         """Validate configuration."""
         if not self.is_public_client and not self.client_secret:
@@ -137,8 +144,12 @@ class OIDCConfig:
 class OIDCAuthentication(AuthInterface):
     def __init__(self, config: OIDCConfig) -> None:
         self.config = config
-        # PKCE store: maps state -> code_verifier for secure per-request PKCE
-        self._pkce_store: Dict[str, str] = {}
+        # PKCE store: use provided store or create default in-memory store
+        self._pkce_store: PKCEStoreProtocol = (
+            config.pkce_store
+            if config.pkce_store is not None
+            else InMemoryPKCEStore()
+        )
         if self.config.well_known_endpoint:
             self.set_from_well_known()
         elif (
@@ -169,11 +180,11 @@ class OIDCAuthentication(AuthInterface):
 
     def _store_pkce_verifier(self, state: str, code_verifier: str) -> None:
         """Store code_verifier for later retrieval during token exchange."""
-        self._pkce_store[state] = code_verifier
+        self._pkce_store.store(state, code_verifier)
 
-    def _retrieve_pkce_verifier(self, state: str) -> Optional[str]:
+    def _retrieve_pkce_verifier(self, state: str) -> str | None:
         """Retrieve and remove code_verifier for the given state."""
-        return self._pkce_store.pop(state, None)
+        return self._pkce_store.retrieve(state)
 
     def set_from_well_known(self):
         endpoints = self.to_dict_or_raise(
