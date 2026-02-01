@@ -14,10 +14,33 @@ from urllib.parse import urlunparse
 
 import jwt
 import requests
-from authlib.common.security import generate_token
-from authlib.oauth2.rfc7636 import create_s256_code_challenge
 from jwt.exceptions import DecodeError
 from jwt.exceptions import InvalidTokenError
+
+# Authlib is an optional dependency for OIDC/PKCE support
+try:
+    from authlib.common.security import generate_token
+    from authlib.oauth2.rfc7636 import create_s256_code_challenge
+
+    AUTHLIB_AVAILABLE = True
+except ImportError:
+    AUTHLIB_AVAILABLE = False
+
+    def generate_token(length: int = 48) -> str:  # type: ignore[misc]
+        """Placeholder that raises ImportError with helpful message."""
+        raise ImportError(
+            "authlib is required for OIDC authentication with PKCE. "
+            "Install it with: pip install 'fastapi-opa[authlib]'"
+        )
+
+    def create_s256_code_challenge(verifier: str) -> str:  # type: ignore[misc]
+        """Placeholder that raises ImportError with helpful message."""
+        raise ImportError(
+            "authlib is required for OIDC authentication with PKCE. "
+            "Install it with: pip install 'fastapi-opa[authlib]'"
+        )
+
+
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
