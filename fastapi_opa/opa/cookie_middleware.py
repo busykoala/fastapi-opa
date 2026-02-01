@@ -135,9 +135,26 @@ class CookieAuthMiddleware:
         """Handle expired token by redirecting to authentication"""
         logger.info("Handling expired token - redirecting to authentication")
 
+        # Safely get authorization endpoint with defensive checks
+        redirect_url = "/"  # Fallback URL
+        auth_list = getattr(self.config, "authentication", None)
+        if auth_list and len(auth_list) > 0:
+            first_auth = auth_list[0]
+            if hasattr(first_auth, "authorization_endpoint"):
+                redirect_url = first_auth.authorization_endpoint
+            else:
+                logger.warning(
+                    "Authentication config missing authorization_endpoint, "
+                    "using fallback redirect to '/'"
+                )
+        else:
+            logger.warning(
+                "No authentication configured, using fallback redirect to '/'"
+            )
+
         # Create response with cookie removal
         response = RedirectResponse(
-            url=self.config.authentication[0].authorization_endpoint,
+            url=redirect_url,
             status_code=303,
         )
         response.delete_cookie(

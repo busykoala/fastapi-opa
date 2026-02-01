@@ -837,3 +837,102 @@ class TestASGIProtocolCompliance:
         assert len(sent_messages) == 2
         assert sent_messages[0]["status"] == 401
         assert sent_messages[1]["body"] == b"Unauthorized"
+
+    @pytest.mark.asyncio
+    async def test_handle_token_expired_with_missing_auth_config(self, caplog):
+        """
+        DEFENSIVE FIX: handle_token_expired should not crash if
+        authentication config is missing or incomplete.
+        """
+        from unittest.mock import AsyncMock
+        from unittest.mock import MagicMock
+
+        from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
+
+        # Create a minimal config without proper authentication
+        mock_config = MagicMock()
+        mock_config.authentication = []  # Empty list
+
+        cookie_config = TokenCookieConfig()
+
+        app = AsyncMock()
+
+        # Create middleware with mocked config
+        middleware = CookieAuthMiddleware.__new__(CookieAuthMiddleware)
+        middleware.config = mock_config
+        middleware.cookie_config = cookie_config
+
+        sent_messages = []
+
+        async def track_send(message):
+            sent_messages.append(message)
+
+        scope = {"type": "http", "path": "/test"}
+
+        import logging
+
+        with caplog.at_level(logging.WARNING):
+            await middleware.handle_token_expired(
+                scope, AsyncMock(), track_send
+            )
+
+        # Should have logged a warning about missing config
+        assert "No authentication configured" in caplog.text
+
+        # Should still send a redirect (to fallback "/")
+        assert len(sent_messages) >= 1
+        start_msg = next(
+            (m for m in sent_messages if m["type"] == "http.response.start"),
+            None,
+        )
+        assert start_msg is not None
+        assert start_msg["status"] == 303
+
+    @pytest.mark.asyncio
+    async def test_handle_token_expired_with_missing_authorization_endpoint(
+        self, caplog
+    ):
+        """
+        DEFENSIVE FIX: handle_token_expired should handle auth config
+        that lacks authorization_endpoint attribute.
+        """
+        from unittest.mock import AsyncMock
+        from unittest.mock import MagicMock
+
+        from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
+
+        # Create config with auth that lacks authorization_endpoint
+        mock_auth = MagicMock(spec=[])  # No attributes
+        mock_config = MagicMock()
+        mock_config.authentication = [mock_auth]
+
+        cookie_config = TokenCookieConfig()
+
+        middleware = CookieAuthMiddleware.__new__(CookieAuthMiddleware)
+        middleware.config = mock_config
+        middleware.cookie_config = cookie_config
+
+        sent_messages = []
+
+        async def track_send(message):
+            sent_messages.append(message)
+
+        scope = {"type": "http", "path": "/test"}
+
+        import logging
+
+        with caplog.at_level(logging.WARNING):
+            await middleware.handle_token_expired(
+                scope, AsyncMock(), track_send
+            )
+
+        # Should have logged a warning
+        assert "missing authorization_endpoint" in caplog.text
+
+        # Should still send a redirect to fallback
+        start_msg = next(
+            (m for m in sent_messages if m["type"] == "http.response.start"),
+            None,
+        )
+        assert start_msg is not None
+        assert start_msg["status"] == 303
