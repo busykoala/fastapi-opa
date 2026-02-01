@@ -403,6 +403,32 @@ class OIDCAuthentication(AuthInterface):
                 error=str(e),
                 raw_tokens=auth_token if self.config.preserve_tokens else None,
             )
+        except requests.RequestException as e:
+            # Network errors (connection, timeout, etc.)
+            logger.error(f"Network error during OIDC authentication: {e}")
+            return AuthenticationResult(
+                success=False,
+                error="Network error during authentication",
+                raw_tokens=auth_token if self.config.preserve_tokens else None,
+            )
+        except (DecodeError, InvalidTokenError) as e:
+            # JWT decoding/validation errors not caught elsewhere
+            logger.error(f"JWT error during OIDC authentication: {e}")
+            return AuthenticationResult(
+                success=False,
+                error="Token validation failed",
+                raw_tokens=auth_token if self.config.preserve_tokens else None,
+            )
+        except Exception as e:
+            # Catch-all for unexpected errors - log full traceback
+            logger.exception(
+                f"Unexpected error during OIDC authentication: {e}"
+            )
+            return AuthenticationResult(
+                success=False,
+                error="Authentication failed due to unexpected error",
+                raw_tokens=auth_token if self.config.preserve_tokens else None,
+            )
 
     def get_auth_redirect_uri(
         self,
