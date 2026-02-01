@@ -82,7 +82,7 @@ class OIDCConfig:
             request from the middleware to the OIDC provider for confidential
             clients. It is optional for public clients.
         scope: str, default="openid email profile"
-            Space seperated list of scopes to request from the OIDC provider
+            Space separated list of scopes to request from the OIDC provider
         trust_x_headers: bool, default=False
             Whether to trust incoming `x-forwarded-` headers when constructing
             the redirect to pass to the OIDC provider.
