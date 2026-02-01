@@ -37,9 +37,7 @@ class OwnReceive:
     See https://github.com/fastapi/fastapi/issues/394 for more details.
     """
 
-    def __init__(
-        self, receive: Receive, max_buffer_size: Optional[int] = None
-    ):
+    def __init__(self, receive: Receive, max_buffer_size: Optional[int] = None):
         self.receive = receive
         self.buffer = []
         self._complete = False
@@ -75,7 +73,7 @@ class OPAMiddleware:
         app: ASGIApp,
         config: OPAConfig,
         skip_endpoints: Optional[List[str]] = None,
-        force_authorization: Optional[bool] = False,
+        enable_authorization: Optional[bool] = True,
         max_buffer_size: Optional[int] = None,
     ) -> None:
         if skip_endpoints is None:
@@ -87,8 +85,15 @@ class OPAMiddleware:
         self.config = config
         self.app = app
         self.skip_endpoints = [re.compile(skip) for skip in skip_endpoints]
-        self.force_authorization = force_authorization
+        self.enable_authorization = enable_authorization
         self.max_buffer_size = max_buffer_size
+        if not self.enable_authorization:
+            logger.warning(
+                "OPA authorization is disabled (enable_authorization=False). "
+                "All authenticated users will have access to all endpoints. "
+                "This is appropriate for authentication-only scenarios where "
+                "authorization is handled at application level."
+            )
 
     async def __call__(
         self, scope: Scope, receive: Receive, send: Send
@@ -170,7 +175,7 @@ class OPAMiddleware:
             user_info["request_path"] = scope.get("path").split("/")[1:]
             data = {"input": user_info}
 
-            if not self.force_authorization:
+            if self.enable_authorization:
                 opa_decision = requests.post(
                     self.config.opa_url, data=json.dumps(data), timeout=5
                 )
@@ -200,24 +205,24 @@ class OPAMiddleware:
         send: Send,
         opa_decision=None,
     ):
-        is_authorized = self.force_authorization
+        # When authorization is disabled, allow all authenticated requests
+        if not self.enable_authorization:
+            logger.info(
+                "OPA authorization skipped (enable_authorization=False)."
+            )
+            return self.app(scope, own_receive, send)
+
+        # Authorization enabled - check OPA decision
+        if opa_decision.status_code != 200:
+            logger.error(f"Returned with status {opa_decision.status_code}.")
+            return self.get_unauthorized_response(scope, receive, send)
+        try:
+            is_authorized = opa_decision.json().get("result", {}).get("allow")
+        except JSONDecodeError:
+            logger.error("Unable to decode OPA response.")
+            return self.get_unauthorized_response(scope, receive, send)
         if not is_authorized:
-            if opa_decision.status_code != 200:
-                logger.error(
-                    f"Returned with status {opa_decision.status_code}."
-                )
-                return self.get_unauthorized_response(scope, receive, send)
-            try:
-                is_authorized = (
-                    opa_decision.json().get("result", {}).get("allow")
-                )
-            except JSONDecodeError:
-                logger.error("Unable to decode OPA response.")
-                return self.get_unauthorized_response(scope, receive, send)
-            if not is_authorized:
-                return self.get_unauthorized_response(scope, receive, send)
-        else:
-            logger.info("OPA decision skipped from the configuration.")
+            return self.get_unauthorized_response(scope, receive, send)
 
         return self.app(scope, own_receive, send)
 

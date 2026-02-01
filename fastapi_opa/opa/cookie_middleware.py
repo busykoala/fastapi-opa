@@ -29,7 +29,7 @@ class CookieAuthMiddleware:
         config: OPAConfig,
         cookie_config: Optional[TokenCookieConfig] = None,
         skip_endpoints: Optional[list[str]] = None,
-        force_authorization: Optional[bool] = False,
+        enable_authorization: Optional[bool] = True,
         max_buffer_size: Optional[int] = None,
     ):
         self.app = app
@@ -39,7 +39,7 @@ class CookieAuthMiddleware:
             app=app,
             config=config,
             skip_endpoints=skip_endpoints,
-            force_authorization=force_authorization,
+            enable_authorization=enable_authorization,
             max_buffer_size=max_buffer_size,
         )
 

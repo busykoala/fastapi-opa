@@ -50,10 +50,12 @@ opa_config = OPAConfig(
 
 app = FastAPI()
 # Add CookieAuthMiddleware to the fastapi app
+# NOTE: enable_authorization=True (default) enables OPA policy checks.
+# Set to False only for development/testing without OPA running.
 app.add_middleware(
     CookieAuthMiddleware,
     config=opa_config,
-    force_authorization=True,
+    enable_authorization=True,
     cookie_config=TokenCookieConfig(
         cookie_name="access_token", cookie_secure=True
     ),

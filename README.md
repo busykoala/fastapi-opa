@@ -289,6 +289,54 @@ cookie_config = TokenCookieConfig(
 
 A security warning will be logged when `preserve_tokens=True` to remind you of these considerations.
 
+### Authorization Control (`enable_authorization`)
+
+> **Warning**
+> The `enable_authorization` parameter controls whether OPA policy checks are performed. Disabling it removes all authorization controls.
+
+**Default Behavior (Secure)**
+
+By default, `enable_authorization=True`. This means OPA is consulted for every request to enforce your authorization policies.
+
+```python
+# Secure default - OPA authorization enabled
+app.add_middleware(
+    CookieAuthMiddleware,
+    config=opa_config,
+    # enable_authorization defaults to True
+)
+```
+
+**When to Disable Authorization**
+
+Set `enable_authorization=False` in these scenarios:
+
+1. **Authentication-only applications**: When you only need to verify user identity without enforcing endpoint-level permissions. In this case, any authenticated user can access all endpoints, and authorization logic (if needed) is handled within your application code.
+
+2. **Development/Testing**: When developing locally without OPA running, or testing the authentication flow in isolation.
+
+```python
+# Authentication only - no OPA policy enforcement
+# Useful when authorization is handled at application level
+# or when all authenticated users should have equal access
+app.add_middleware(
+    CookieAuthMiddleware,
+    config=opa_config,
+    enable_authorization=False,
+)
+```
+
+**Security Considerations When `enable_authorization=False`**
+
+When authorization is disabled:
+- **Authentication still works**: Users must still authenticate via OIDC/SAML
+- **No OPA policy checks**: Endpoint access is not controlled by OPA policies
+- **Equal access**: All authenticated users have the same access level
+
+If your application requires role-based access control or fine-grained permissions, keep `enable_authorization=True` and define appropriate OPA policies.
+
+A security warning will be logged when `enable_authorization=False` to ensure this is an intentional choice.
+
 <a name="custom-payload-enrichment"/>
 
 ## Custom payload enrichment
