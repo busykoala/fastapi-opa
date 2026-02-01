@@ -10,6 +10,7 @@
   - [API key authentication](#api-key-auth)
   - [OIDC authentication](#oidc-auth)
   - [SAML authentication](#saml-auth)
+- [Security Considerations](#security-considerations)
 - [Custom payload enrichment](#custom-payload-enrichment)
   - [GraphQL enrichment](#gql-enrichment)
 - [Development](#development)
@@ -222,6 +223,71 @@ identity provider you need to configure `encrypt assertion`,
 `client signature required`, `force POST bindings` on creating the client.
 Also configure: `Client Scopes` -> `role_list (saml)` -> `Mappers tab` ->
 `role list` -> `Single Role Attribute`
+
+<a name="security-considerations"/>
+
+## Security Considerations
+
+### Token Preservation (`preserve_tokens`)
+
+> **Warning**
+> The `preserve_tokens` configuration option controls whether raw tokens (access_token, id_token) are included in the `AuthenticationResult`. This has important security implications.
+
+**Default Behavior (Secure)**
+
+By default, `preserve_tokens=False`. This means raw tokens are NOT exposed in the authentication result, following the principle of least privilege.
+
+```python
+# Secure default - tokens are not preserved
+oidc_config = OIDCConfig(
+    well_known_endpoint="...",
+    client_id="my-client",
+    client_secret="my-secret",
+    # preserve_tokens defaults to False
+)
+```
+
+**When to Enable Token Preservation**
+
+Set `preserve_tokens=True` only if you need access to raw tokens downstream, such as:
+- Using `CookieAuthMiddleware` which needs tokens to store in cookies
+- Passing tokens to downstream services
+- Custom token inspection requirements
+
+```python
+# Explicit opt-in when tokens are needed
+oidc_config = OIDCConfig(
+    well_known_endpoint="...",
+    client_id="my-client",
+    client_secret="my-secret",
+    preserve_tokens=True,  # Explicit opt-in
+)
+```
+
+**Security Risks When `preserve_tokens=True`**
+
+When enabled, be aware of these risks:
+
+1. **Token Leakage via Logs**: If you log the `AuthenticationResult`, tokens will appear in logs
+2. **XSS Attacks**: If cookies are configured without `httponly=True`, JavaScript can steal tokens
+3. **Network Interception**: If cookies are configured without `secure=True`, tokens can be intercepted over HTTP
+
+**Recommended Cookie Configuration**
+
+When using `preserve_tokens=True` with `CookieAuthMiddleware`, always use secure cookie settings:
+
+```python
+from fastapi_opa.models import TokenCookieConfig
+
+cookie_config = TokenCookieConfig(
+    cookie_name="access_token",
+    cookie_secure=True,      # HTTPS only - prevents interception
+    cookie_httponly=True,    # No JavaScript access - prevents XSS
+    cookie_samesite="lax",   # CSRF protection
+)
+```
+
+A security warning will be logged when `preserve_tokens=True` to remind you of these considerations.
 
 <a name="custom-payload-enrichment"/>
 

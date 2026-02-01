@@ -74,9 +74,13 @@ class OIDCConfig:
         use_auth_header: bool, default=True
             Token request configuration for sending client_id and secret
             in body if False and not public.
-        preserve_tokens: bool, default=True
+        preserve_tokens: bool, default=False
             Boolean configuration to preserve the tokens id_token and
             access_token in the request for downstream inspection.
+            WARNING: Setting this to True exposes raw tokens which could be
+            leaked via logs, error messages, or stolen via XSS if cookie
+            security flags are misconfigured. Only enable if you explicitly
+            need access to raw tokens downstream.
         code_challenge_method: str, default="S256"
             Hashing method for the trasformation
         response_type: str, default="code"
@@ -98,7 +102,7 @@ class OIDCConfig:
     # Client authentication options for the token request
     is_public_client: bool = field(default=False)
     use_auth_header: bool = field(default=True)
-    preserve_tokens: bool = field(default=True)
+    preserve_tokens: bool = field(default=False)
 
     # PKCE specific fields - note: code_verifier/code_challenge are now
     # generated per-request in OIDCAuthentication for security
@@ -138,6 +142,14 @@ class OIDCConfig:
                 f"code_verifier_length must be between "
                 f"{PKCE_CODE_VERIFIER_MIN_LENGTH} and "
                 f"{PKCE_CODE_VERIFIER_MAX_LENGTH} per RFC 7636"
+            )
+        if self.preserve_tokens:
+            logger.warning(
+                "SECURITY WARNING: preserve_tokens=True exposes raw tokens "
+                "(access_token, id_token) in AuthenticationResult. These tokens "
+                "could be leaked via logs, error messages, or stolen via XSS "
+                "attacks if cookie security flags are misconfigured. Only enable "
+                "this option if you explicitly need access to raw tokens downstream."
             )
 
 

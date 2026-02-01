@@ -51,7 +51,13 @@ oidc_config = OIDCConfig(
     code_verifier_length=PKCE_CODE_VERIFIER_DEFAULT_LENGTH,
     # Skip user info endpoint call (faster, uses only id_token claims)
     get_user_info=False,
-    # Keep raw tokens available in request state for downstream use
+    # SECURITY NOTE: preserve_tokens=True is required here because
+    # CookieAuthMiddleware needs access to raw tokens to store them in cookies.
+    # This is an explicit opt-in - the default is False for security.
+    # When enabling this, ensure cookie security flags are properly configured:
+    # - cookie_httponly=True (prevents JavaScript access)
+    # - cookie_secure=True (HTTPS only)
+    # - cookie_samesite="lax" or "strict" (CSRF protection)
     preserve_tokens=True,
 )
 
