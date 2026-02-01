@@ -2,5 +2,7 @@ version = 1
 
 [ignore]
 # PYSEC-2025-49: setuptools has no fixed build for Python 3.8; ignore while 3.8 stays supported.
-ids = ["PYSEC-2025-49"]
+# GHSA-wp53-j4wj-2cfg: python-multipart v0.0.22 requires Python 3.10+; we support 3.9.
+#                      Default config is not vulnerable (requires UPLOAD_KEEP_FILENAME=True).
+ids = ["PYSEC-2025-49", "GHSA-wp53-j4wj-2cfg"]
 while_no_fix = ["PYSEC-2025-49"]

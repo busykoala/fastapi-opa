@@ -231,7 +231,7 @@ Also configure: `Client Scopes` -> `role_list (saml)` -> `Mappers tab` ->
 ### Token Preservation (`preserve_tokens`)
 
 > **Warning**
-> The `preserve_tokens` configuration option controls whether raw tokens (access_token, id_token) are included in the `AuthenticationResult`. This has important security implications.
+> The `preserve_tokens` configuration option controls whether raw tokens (`access_token`, `id_token`) are included in the `AuthenticationResult`. This has important security implications.
 
 **Default Behavior (Secure)**
 

@@ -148,7 +148,7 @@ class OIDCConfig:
     # PKCE store configuration
     # If None, uses InMemoryPKCEStore with default settings
     # For multi-process deployments, provide a custom store (e.g., Redis)
-    pkce_store: PKCEStoreProtocol | None = field(default=None)
+    pkce_store: Optional[PKCEStoreProtocol] = field(default=None)
 
     def __post_init__(self):
         """Validate configuration."""
@@ -217,7 +217,7 @@ class OIDCAuthentication(AuthInterface):
         """Store code_verifier for later retrieval during token exchange."""
         self._pkce_store.store(state, code_verifier)
 
-    def _retrieve_pkce_verifier(self, state: str) -> str | None:
+    def _retrieve_pkce_verifier(self, state: str) -> Optional[str]:
         """Retrieve and remove code_verifier for the given state."""
         return self._pkce_store.retrieve(state)
 

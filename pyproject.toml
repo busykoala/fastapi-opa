@@ -5,12 +5,14 @@ description = "FastAPI OPA middleware incl. auth flow."
 authors = [{name = "Matthias Osswald", email = "info@busykoala.io"}]
 license = {text = "GPL-3.0-or-later"}
 readme = "README.md"
-requires-python = ">=3.8,<4.0"
+requires-python = ">=3.9,<4.0"
 dependencies = [
     "fastapi>=0.109.2",
     "itsdangerous",
     "requests",
     "PyJWT[crypto]>=2.4",
+    "urllib3>=2.6.3",
+    "starlette>=0.47.2",
 ]
 keywords = [
     "fastapi",
@@ -28,7 +30,7 @@ build-backend = "hatchling.build"
 [project.optional-dependencies]
 graphql = ["graphene>=2,<3"]
 saml = ["python3-saml", "python-multipart"]
-authlib = ["authlib>=1.3.2,<2.0.0"]
+authlib = ["authlib>=1.6.4,<2.0.0"]
 
 [project.urls]
 Repository = "https://github.com/busykoala/fastapi-opa"
@@ -45,8 +47,8 @@ dev = [
     "pytest-mock",
     "pytest-timeout>=2.3.1",
     "ruff",
-    "setuptools>=78.1.1; python_version >= '3.9'",
-    "pysentry-rs; python_version >= '3.9'",
+    "setuptools>=78.1.1",
+    "pysentry-rs",
     "vale>=2.20.2",
 ]
 
@@ -66,5 +68,7 @@ force-single-line = true
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 filterwarnings = [
+    "ignore:.*insecure.*:UserWarning",
+    "ignore:.*key.*length.*:UserWarning",
     "ignore::jwt.warnings.InsecureKeyLengthWarning",
 ]

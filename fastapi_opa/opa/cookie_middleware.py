@@ -28,7 +28,7 @@ class CookieAuthMiddleware:
         app: ASGIApp,
         config: OPAConfig,
         cookie_config: Optional[TokenCookieConfig] = None,
-        skip_endpoints: Optional[list[str]] = None,
+        skip_endpoints: Optional[List[str]] = None,
         enable_authorization: Optional[bool] = True,
         max_buffer_size: Optional[int] = None,
     ):
