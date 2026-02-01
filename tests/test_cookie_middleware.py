@@ -591,3 +591,249 @@ class TestCookieMiddlewareThreadSafety:
         assert oidc_var is middleware_var, (
             "Both modules should import the same context variable instance"
         )
+
+
+class TestASGIProtocolCompliance:
+    """
+    Tests for ASGI protocol compliance in CookieAuthMiddleware.
+
+    These tests verify that the middleware properly handles the ASGI message
+    flow, especially when hijacking responses (e.g., on 401 redirects).
+    """
+
+    @pytest.mark.asyncio
+    async def test_response_hijack_ignores_subsequent_messages(self):
+        """
+        ASGI FIX: When the middleware hijacks a 401 response to send a redirect,
+        subsequent ASGI messages from the original response must be ignored
+        to avoid protocol violations.
+
+        This test verifies that after handle_token_expired sends a redirect,
+        any subsequent http.response.body messages are silently dropped.
+        """
+        from unittest.mock import AsyncMock
+
+        from fastapi_opa import OPAConfig
+        from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
+
+        # Setup
+        opa_host = "http://localhost:8181"
+        auth = AuthenticationDummy()
+        opa_config = OPAConfig(authentication=auth, opa_host=opa_host)
+        cookie_config = TokenCookieConfig()
+
+        app = AsyncMock()
+        middleware = CookieAuthMiddleware(
+            app=app,
+            config=opa_config,
+            cookie_config=cookie_config,
+        )
+
+        # Track what gets sent to the real send function
+        sent_messages = []
+
+        async def track_send(message):
+            sent_messages.append(message)
+
+        # Mock scope with cookie token (to trigger the 401 handling path)
+        scope = {
+            "type": "http",
+            "path": "/test",
+            "headers": [(b"cookie", b"access_token=expired_token")],
+            "state": {},
+        }
+
+        # Mock handle_token_expired to track it was called
+        handle_expired_called = False
+        original_handle = middleware.handle_token_expired
+
+        async def mock_handle_token_expired(scope, receive, send):
+            nonlocal handle_expired_called
+            handle_expired_called = True
+            # Send a redirect response
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 303,
+                    "headers": [(b"location", b"/login")],
+                }
+            )
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": b"",
+                }
+            )
+
+        middleware.handle_token_expired = mock_handle_token_expired
+
+        # Simulate the app sending a 401 response followed by body
+        messages_from_app = [
+            {"type": "http.response.start", "status": 401, "headers": []},
+            {"type": "http.response.body", "body": b"Unauthorized"},
+        ]
+        message_index = 0
+
+        async def mock_app(scope, receive, send):
+            nonlocal message_index
+            for msg in messages_from_app:
+                await send(msg)
+
+        middleware.opa = mock_app
+
+        # Execute
+        await middleware(scope, AsyncMock(), track_send)
+
+        # Verify
+        assert handle_expired_called, (
+            "handle_token_expired should have been called"
+        )
+
+        # The redirect response (303) should have been sent
+        start_messages = [
+            m for m in sent_messages if m["type"] == "http.response.start"
+        ]
+        assert len(start_messages) == 1, (
+            "Should have exactly one response.start"
+        )
+        assert start_messages[0]["status"] == 303, (
+            "Should be the redirect status"
+        )
+
+        # The original 401 body should NOT have been forwarded
+        body_messages = [
+            m for m in sent_messages if m["type"] == "http.response.body"
+        ]
+        assert len(body_messages) == 1, (
+            "Should have exactly one response.body (from redirect)"
+        )
+        assert body_messages[0]["body"] == b"", (
+            "Should be the redirect's empty body"
+        )
+
+    @pytest.mark.asyncio
+    async def test_normal_response_not_affected_by_hijack_flag(self):
+        """
+        Verify that normal (non-401) responses are not affected by the
+        response_hijacked flag logic.
+        """
+        from unittest.mock import AsyncMock
+
+        from fastapi_opa import OPAConfig
+        from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
+
+        # Setup
+        opa_host = "http://localhost:8181"
+        auth = AuthenticationDummy()
+        opa_config = OPAConfig(authentication=auth, opa_host=opa_host)
+        cookie_config = TokenCookieConfig()
+
+        app = AsyncMock()
+        middleware = CookieAuthMiddleware(
+            app=app,
+            config=opa_config,
+            cookie_config=cookie_config,
+        )
+
+        sent_messages = []
+
+        async def track_send(message):
+            sent_messages.append(message)
+
+        scope = {
+            "type": "http",
+            "path": "/test",
+            "headers": [],
+            "state": {},
+        }
+
+        # Simulate the app sending a normal 200 response
+        async def mock_app(scope, receive, send):
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 200,
+                    "headers": [(b"content-type", b"application/json")],
+                }
+            )
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": b'{"status": "ok"}',
+                }
+            )
+
+        middleware.opa = mock_app
+
+        # Execute
+        await middleware(scope, AsyncMock(), track_send)
+
+        # Verify both messages were sent
+        assert len(sent_messages) == 2
+        assert sent_messages[0]["type"] == "http.response.start"
+        assert sent_messages[0]["status"] == 200
+        assert sent_messages[1]["type"] == "http.response.body"
+        assert sent_messages[1]["body"] == b'{"status": "ok"}'
+
+    @pytest.mark.asyncio
+    async def test_401_without_cookie_not_hijacked(self):
+        """
+        Verify that 401 responses are only hijacked when there's a cookie token.
+        If no cookie was present, the 401 should pass through normally.
+        """
+        from unittest.mock import AsyncMock
+
+        from fastapi_opa import OPAConfig
+        from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
+
+        # Setup
+        opa_host = "http://localhost:8181"
+        auth = AuthenticationDummy()
+        opa_config = OPAConfig(authentication=auth, opa_host=opa_host)
+        cookie_config = TokenCookieConfig()
+
+        app = AsyncMock()
+        middleware = CookieAuthMiddleware(
+            app=app,
+            config=opa_config,
+            cookie_config=cookie_config,
+        )
+
+        sent_messages = []
+
+        async def track_send(message):
+            sent_messages.append(message)
+
+        # No cookie in headers
+        scope = {
+            "type": "http",
+            "path": "/test",
+            "headers": [],
+            "state": {},
+        }
+
+        # Simulate the app sending a 401 response (no cookie present)
+        async def mock_app(scope, receive, send):
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 401,
+                    "headers": [],
+                }
+            )
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": b"Unauthorized",
+                }
+            )
+
+        middleware.opa = mock_app
+
+        # Execute
+        await middleware(scope, AsyncMock(), track_send)
+
+        # Verify the 401 passed through (not hijacked)
+        assert len(sent_messages) == 2
+        assert sent_messages[0]["status"] == 401
+        assert sent_messages[1]["body"] == b"Unauthorized"

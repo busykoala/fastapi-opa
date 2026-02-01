@@ -105,7 +105,7 @@ class OIDCConfig:
             security flags are misconfigured. Only enable if you explicitly
             need access to raw tokens downstream.
         code_challenge_method: str, default="S256"
-            Hashing method for the trasformation
+            Hashing method for the transformation
         response_type: str, default="code"
             Authorization code response type
         grant_type: str, default="authorization_code"

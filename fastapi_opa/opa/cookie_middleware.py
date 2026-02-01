@@ -184,9 +184,17 @@ class CookieAuthMiddleware:
 
         # Wrap send to intercept response
         response_started = False
+        response_hijacked = (
+            False  # Flag to track if we've taken over the response
+        )
 
         async def send_wrapper(message):
-            nonlocal response_started
+            nonlocal response_started, response_hijacked
+
+            # If we've hijacked the response (sent our own redirect),
+            # ignore all subsequent messages from the original response
+            if response_hijacked:
+                return
 
             if message["type"] == "http.response.start":
                 response_started = True
@@ -195,6 +203,7 @@ class CookieAuthMiddleware:
                 # Handle 401 (expired/invalid token)
                 if status == 401 and cookie_token:
                     logger.warning("Token in cookie is invalid or expired")
+                    response_hijacked = True  # Mark that we're taking over
                     await self.handle_token_expired(scope, receive, send)
                     return
 
