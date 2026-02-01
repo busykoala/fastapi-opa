@@ -1,7 +1,3 @@
-[build-system]
-requires = ["hatchling>=1.25"]
-build-backend = "hatchling.build"
-
 [project]
 name = "fastapi-opa"
 version = "2.0.4"
@@ -25,16 +21,20 @@ keywords = [
     "pkce",
 ]
 
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
 [project.optional-dependencies]
 graphql = ["graphene>=2,<3"]
 saml = ["python3-saml", "python-multipart"]
+authlib = ["authlib>=1.3.2,<2.0.0"]
 
 [project.urls]
 Repository = "https://github.com/busykoala/fastapi-opa"
 
 [dependency-groups]
 dev = [
-    "Authlib",
     "bandit",
     "freezegun",
     "httpx",
@@ -51,7 +51,7 @@ dev = [
 ]
 
 [tool.hatch.build]
-exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_saml.py"]
+exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_oidc_pkce.py", "fastapi_opa/example_saml.py"]
 
 [tool.ruff]
 line-length = 79
@@ -62,3 +62,9 @@ ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 force-single-line = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+filterwarnings = [
+    "ignore::jwt.warnings.InsecureKeyLengthWarning",
+]

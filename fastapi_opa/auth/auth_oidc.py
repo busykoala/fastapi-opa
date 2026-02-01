@@ -132,7 +132,9 @@ class OIDCConfig:
     code_challenge_method: str = field(default="S256")
     response_type: str = field(default="code")
     grant_type: str = field(default="authorization_code")
-    code_verifier_length: int = field(default=PKCE_CODE_VERIFIER_DEFAULT_LENGTH)
+    code_verifier_length: int = field(
+        default=PKCE_CODE_VERIFIER_DEFAULT_LENGTH
+    )
 
     # OIDC endpoints configuration
     well_known_endpoint: str = field(default="")
@@ -280,7 +282,9 @@ class OIDCAuthentication(AuthInterface):
         callback_uri = urlunparse(
             [
                 (
-                    request.headers.get("x-forwarded-proto", request.url.scheme)
+                    request.headers.get(
+                        "x-forwarded-proto", request.url.scheme
+                    )
                     if self.config.trust_x_headers
                     else request.url.scheme
                 ),
@@ -313,7 +317,9 @@ class OIDCAuthentication(AuthInterface):
             # Build query params safely using urlencode to prevent injection
             # This properly encodes special characters like &, =, etc.
             existing_params = dict(request.query_params.items())
-            query_string = urlencode(existing_params) if existing_params else ""
+            query_string = (
+                urlencode(existing_params) if existing_params else ""
+            )
             redirect_callback = (
                 f"{callback_uri}?{query_string}"
                 if query_string

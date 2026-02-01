@@ -329,7 +329,9 @@ class TestCookieMiddlewareIntegration:
 
     def test_request_without_cookie_or_auth(self, client_with_cookies):
         """Test request without cookie or authorization header"""
-        with patch("fastapi_opa.opa.opa_middleware.requests.post") as mock_post:
+        with patch(
+            "fastapi_opa.opa.opa_middleware.requests.post"
+        ) as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = lambda: {"result": {"allow": True}}
 
@@ -508,8 +510,12 @@ class TestCookieMiddlewareThreadSafety:
 
         # The middleware no longer modifies global state
         # Verify the global config remains unchanged after middleware creation
-        assert middleware1.config.authentication[0].config.get_user_info is True
-        assert middleware2.config.authentication[0].config.get_user_info is True
+        assert (
+            middleware1.config.authentication[0].config.get_user_info is True
+        )
+        assert (
+            middleware2.config.authentication[0].config.get_user_info is True
+        )
 
     @pytest.mark.asyncio
     async def test_concurrent_requests_are_isolated(self):
@@ -645,7 +651,6 @@ class TestASGIProtocolCompliance:
 
         # Mock handle_token_expired to track it was called
         handle_expired_called = False
-        original_handle = middleware.handle_token_expired
 
         async def mock_handle_token_expired(scope, receive, send):
             nonlocal handle_expired_called
@@ -854,8 +859,6 @@ class TestASGIProtocolCompliance:
         mock_config.authentication = []  # Empty list
 
         cookie_config = TokenCookieConfig()
-
-        app = AsyncMock()
 
         # Create middleware with mocked config
         middleware = CookieAuthMiddleware.__new__(CookieAuthMiddleware)
