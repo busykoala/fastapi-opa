@@ -1,9 +1,13 @@
 from typing import Dict
+from typing import Literal
 from typing import Optional
 
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
+
+# Valid values for SameSite cookie attribute
+SameSitePolicy = Literal["strict", "lax", "none"]
 
 
 class TokenCookieConfig(BaseModel):
@@ -17,7 +21,7 @@ class TokenCookieConfig(BaseModel):
     cookie_path: str = "/"
     cookie_secure: bool = True
     cookie_httponly: bool = True
-    cookie_samesite: str = "lax"
+    cookie_samesite: SameSitePolicy = "lax"
 
 
 class AuthenticationResult(BaseModel):

@@ -56,6 +56,52 @@ class TestTokenCookieConfig:
         with pytest.raises(Exception):  # ValidationError for frozen model
             config.cookie_name = "new_name"
 
+    def test_samesite_strict_valid(self):
+        """Test that 'strict' is a valid samesite value"""
+        config = TokenCookieConfig(cookie_samesite="strict")
+        assert config.cookie_samesite == "strict"
+
+    def test_samesite_lax_valid(self):
+        """Test that 'lax' is a valid samesite value"""
+        config = TokenCookieConfig(cookie_samesite="lax")
+        assert config.cookie_samesite == "lax"
+
+    def test_samesite_none_valid(self):
+        """Test that 'none' is a valid samesite value"""
+        config = TokenCookieConfig(cookie_samesite="none")
+        assert config.cookie_samesite == "none"
+
+    def test_samesite_invalid_value_rejected(self):
+        """Test that invalid samesite values are rejected"""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
+            TokenCookieConfig(cookie_samesite="invalid")
+
+        # Verify the error mentions the invalid value
+        assert "cookie_samesite" in str(exc_info.value)
+
+    def test_samesite_empty_string_rejected(self):
+        """Test that empty string is rejected for samesite"""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            TokenCookieConfig(cookie_samesite="")
+
+    def test_samesite_case_sensitive(self):
+        """Test that samesite values are case-sensitive (lowercase required)"""
+        from pydantic import ValidationError
+
+        # Uppercase should be rejected
+        with pytest.raises(ValidationError):
+            TokenCookieConfig(cookie_samesite="Strict")
+
+        with pytest.raises(ValidationError):
+            TokenCookieConfig(cookie_samesite="LAX")
+
+        with pytest.raises(ValidationError):
+            TokenCookieConfig(cookie_samesite="None")
+
 
 class TestAuthenticationResult:
     """Test AuthenticationResult model"""
@@ -283,9 +329,7 @@ class TestCookieMiddlewareIntegration:
 
     def test_request_without_cookie_or_auth(self, client_with_cookies):
         """Test request without cookie or authorization header"""
-        with patch(
-            "fastapi_opa.opa.opa_middleware.requests.post"
-        ) as mock_post:
+        with patch("fastapi_opa.opa.opa_middleware.requests.post") as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json = lambda: {"result": {"allow": True}}
 
@@ -464,12 +508,8 @@ class TestCookieMiddlewareThreadSafety:
 
         # The middleware no longer modifies global state
         # Verify the global config remains unchanged after middleware creation
-        assert (
-            middleware1.config.authentication[0].config.get_user_info is True
-        )
-        assert (
-            middleware2.config.authentication[0].config.get_user_info is True
-        )
+        assert middleware1.config.authentication[0].config.get_user_info is True
+        assert middleware2.config.authentication[0].config.get_user_info is True
 
     @pytest.mark.asyncio
     async def test_concurrent_requests_are_isolated(self):
