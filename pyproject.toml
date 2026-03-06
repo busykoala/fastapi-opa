@@ -1,6 +1,6 @@
 [project]
 name = "fastapi-opa"
-version = "2.0.4"
+version = "3.0.0"
 description = "FastAPI OPA middleware incl. auth flow."
 authors = [{name = "Matthias Osswald", email = "info@busykoala.io"}]
 license = {text = "GPL-3.0-or-later"}
@@ -30,7 +30,7 @@ build-backend = "hatchling.build"
 [project.optional-dependencies]
 graphql = ["graphene>=2,<3"]
 saml = ["python3-saml", "python-multipart"]
-authlib = ["authlib>=1.6.4,<2.0.0"]
+authlib = ["authlib>=1.6.9,<2.0.0"]
 
 [project.urls]
 Repository = "https://github.com/busykoala/fastapi-opa"
