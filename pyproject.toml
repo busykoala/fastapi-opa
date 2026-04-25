@@ -50,6 +50,8 @@ dev = [
     "setuptools>=78.1.1",
     "pysentry-rs",
     "vale>=2.20.2",
+    "ty>=0.0.32",
+    "mypy>=1.20.2",
 ]
 
 [tool.hatch.build]
@@ -59,7 +61,7 @@ exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_oidc_pkce.py", "f
 line-length = 79
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "Q", "I"]
+select = ["E", "F", "W", "Q", "I", "B", "C4", "G", "PIE", "RET", "RUF", "SIM", "UP", "ANN401", "PT",]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
@@ -72,3 +74,50 @@ filterwarnings = [
     "ignore:.*key.*length.*:UserWarning",
     "ignore::jwt.warnings.InsecureKeyLengthWarning",
 ]
+
+[tool.ty.rules]
+all = "error"
+
+[tool.ty.terminal]
+error-on-warning = true
+
+[tool.mypy]
+python_version = "3.13"
+packages = ["fastapi_opa"]
+
+strict = true
+
+# Extra runtime-safety checks that are especially useful for None/API issues.
+warn_return_any = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+strict_equality = true
+strict_bytes = true
+
+# Make accidental Any less likely.
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_any_unimported = true
+
+# Function/API strictness.
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+
+# Optional/None safety.
+no_implicit_optional = true
+
+# Good hygiene.
+show_error_codes = true
+pretty = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "authlib.*",
+    "onelogin.*",
+    "requests",
+]
+ignore_missing_imports = true

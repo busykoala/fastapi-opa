@@ -12,6 +12,7 @@ Only authentication is performed. Use only for development/testing.
 
 import json
 import logging
+from typing import cast
 from unittest.mock import AsyncMock
 from unittest.mock import Mock
 
@@ -346,7 +347,9 @@ class TestCookieMiddlewareEnableAuthorization:
         )
 
         # The internal OPAMiddleware should have enable_authorization=False
-        assert middleware.opa.enable_authorization is False
+        assert (
+            cast(OPAMiddleware, middleware.opa).enable_authorization is False
+        )
 
     def test_cookie_middleware_defaults_to_enabled(self, mocker):
         """CookieAuthMiddleware should default to enable_authorization=True."""
@@ -366,7 +369,7 @@ class TestCookieMiddlewareEnableAuthorization:
         )
 
         # Should default to True
-        assert middleware.opa.enable_authorization is True
+        assert cast(OPAMiddleware, middleware.opa).enable_authorization is True
 
 
 class TestInfoLogWhenAuthorizationSkipped:

@@ -1,7 +1,3 @@
-from typing import Dict
-
-from authlib.common.security import generate_token
-from authlib.oauth2.rfc7636 import create_s256_code_challenge
 from fastapi import FastAPI
 from fastapi import Request
 
@@ -11,17 +7,13 @@ from fastapi_opa.auth import OIDCConfig
 from fastapi_opa.models import TokenCookieConfig
 from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
 
-# Generate PKCE values using Authlib's built-in functions
-code_verifier = generate_token(128)
-code_challenge = create_s256_code_challenge(code_verifier)
-
 # The hostname of your Open Policy Agent instance
 opa_host = "http://localhost:8181"
 
 # OIDC configuration with PKCE
 oidc_config = OIDCConfig(
     # well known endpoint
-    well_known_endpoint="http://localhost:8000/auth/realms/example-realm/.well-known/openid-configuration",  # noqa
+    well_known_endpoint="http://localhost:8000/auth/realms/example-realm/.well-known/openid-configuration",
     # host where this app is running
     app_uri="http://localhost:5000",
     # client id of your app configured in the identity provider
@@ -63,5 +55,5 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root(request: Request) -> Dict:
+async def root(request: Request) -> dict[str, str]:
     return {"msg": "success"}

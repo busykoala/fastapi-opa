@@ -1,12 +1,10 @@
 """Cookie-based authentication middleware implementation"""
 
 import logging
-from typing import List
-from typing import Optional
-from typing import Tuple
 
 from starlette.responses import RedirectResponse
 from starlette.types import ASGIApp
+from starlette.types import Message
 from starlette.types import Receive
 from starlette.types import Scope
 from starlette.types import Send
@@ -27,15 +25,15 @@ class CookieAuthMiddleware:
         self,
         app: ASGIApp,
         config: OPAConfig,
-        cookie_config: Optional[TokenCookieConfig] = None,
-        skip_endpoints: Optional[List[str]] = None,
-        enable_authorization: Optional[bool] = True,
-        max_buffer_size: Optional[int] = None,
-    ):
+        cookie_config: TokenCookieConfig | None = None,
+        skip_endpoints: list[str] | None = None,
+        enable_authorization: bool | None = True,
+        max_buffer_size: int | None = None,
+    ) -> None:
         self.app = app
         self.config = config
         self.cookie_config = cookie_config or TokenCookieConfig()
-        self.opa = OPAMiddleware(
+        self.opa: ASGIApp = OPAMiddleware(
             app=app,
             config=config,
             skip_endpoints=skip_endpoints,
@@ -43,7 +41,7 @@ class CookieAuthMiddleware:
             max_buffer_size=max_buffer_size,
         )
 
-    def _create_cookie_header(self, token: str) -> Tuple[bytes, bytes]:
+    def _create_cookie_header(self, token: str) -> tuple[bytes, bytes]:
         """Create Set-Cookie header value"""
         if not token:  # Removing cookie case
             cookie_parts = [
@@ -78,7 +76,7 @@ class CookieAuthMiddleware:
 
     def _extract_token_from_response(
         self, auth_result: AuthenticationResult
-    ) -> Optional[str]:
+    ) -> str | None:
         """Extract token from authentication result"""
         if not auth_result.raw_tokens:
             logger.debug("No raw tokens in auth result")
@@ -86,22 +84,24 @@ class CookieAuthMiddleware:
 
         # Try access_token first
         token = auth_result.raw_tokens.get("access_token")
-        if token:
+        if isinstance(token, str) and token:
             logger.debug("Found access_token in auth result")
             return token
 
         # Try other token types
         for key in ["id_token", "token"]:
             if key in auth_result.raw_tokens:
-                logger.debug(f"Found {key} in auth result")
-                return auth_result.raw_tokens[key]
+                logger.debug("Found %s in auth result", key)
+                token_value = auth_result.raw_tokens[key]
+                if isinstance(token_value, str):
+                    return token_value
 
         logger.debug("No suitable token found in auth result")
         return None
 
     def _extract_token_from_cookie(
-        self, headers: List[Tuple[bytes, bytes]]
-    ) -> Optional[str]:
+        self, headers: list[tuple[bytes, bytes]]
+    ) -> str | None:
         """Extract token from cookie header"""
         if not self.cookie_config.enabled:
             logger.debug("Cookie handling is disabled")
@@ -120,7 +120,7 @@ class CookieAuthMiddleware:
         return None
 
     def _add_auth_header(
-        self, headers: List[Tuple[bytes, bytes]], token: str
+        self, headers: list[tuple[bytes, bytes]], token: str
     ) -> None:
         """Add authorization header"""
         if not any(name.lower() == b"authorization" for name, _ in headers):
@@ -129,7 +129,7 @@ class CookieAuthMiddleware:
 
     @staticmethod
     def _should_handle_expired_token(
-        scope: Scope, cookie_token: Optional[str]
+        scope: Scope, cookie_token: str | None
     ) -> bool:
         """Handle cookie re-auth only for explicit authentication failures."""
         if not cookie_token:
@@ -185,7 +185,7 @@ class CookieAuthMiddleware:
             return await self.app(scope, receive, send)
 
         logger.debug(
-            f"Processing request to: {scope.get('path', 'unknown path')}"
+            "Processing request to: %s", scope.get("path", "unknown path")
         )
 
         # Prepare request with cookie handling
@@ -210,13 +210,12 @@ class CookieAuthMiddleware:
                 skip_user_info_token = skip_user_info_for_request.set(True)
 
         # Wrap send to intercept response
-        response_started = False
         response_hijacked = (
             False  # Flag to track if we've taken over the response
         )
 
-        async def send_wrapper(message):
-            nonlocal response_started, response_hijacked
+        async def send_wrapper(message: Message) -> None:
+            nonlocal response_hijacked
 
             # If we've hijacked the response (sent our own redirect),
             # ignore all subsequent messages from the original response
@@ -224,7 +223,6 @@ class CookieAuthMiddleware:
                 return
 
             if message["type"] == "http.response.start":
-                response_started = True
                 status = message.get("status", 200)
 
                 # Handle 401 (expired/invalid token)
@@ -240,16 +238,18 @@ class CookieAuthMiddleware:
                 headers = list(message.get("headers", []))
                 auth_result = scope.get("state", {}).get("auth_result")
 
-                if auth_result and isinstance(
-                    auth_result, AuthenticationResult
+                if (
+                    auth_result
+                    and isinstance(auth_result, AuthenticationResult)
+                    and auth_result.success
+                    and auth_result.raw_tokens
                 ):
-                    if auth_result.success and auth_result.raw_tokens:
-                        token = self._extract_token_from_response(auth_result)
-                        if token:
-                            cookie_header = self._create_cookie_header(token)
-                            headers.append(cookie_header)
-                            message["headers"] = headers
-                            logger.info("New token set in cookie")
+                    token = self._extract_token_from_response(auth_result)
+                    if token:
+                        cookie_header = self._create_cookie_header(token)
+                        headers.append(cookie_header)
+                        message["headers"] = headers
+                        logger.info("New token set in cookie")
 
                 await send(message)
             else:

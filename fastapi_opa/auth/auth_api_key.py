@@ -1,8 +1,6 @@
 import hmac
 import logging
 from dataclasses import dataclass
-from typing import List
-from typing import Optional
 
 from starlette.requests import Request
 
@@ -26,7 +24,7 @@ class APIKeyAuthentication(AuthInterface):
     async def authenticate(
         self,
         request: Request,
-        accepted_methods: Optional[List[str]] = None,
+        accepted_methods: list[str] | None = None,
     ) -> AuthenticationResult:
         key = request.headers.get(self.config.header_key, None)
         if key is None or not hmac.compare_digest(key, self.config.api_key):

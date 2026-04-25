@@ -1,8 +1,5 @@
 from abc import ABC
 from abc import abstractmethod
-from typing import List
-from typing import Optional
-from typing import Union
 
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
@@ -19,7 +16,6 @@ class AuthInterface(ABC):
     async def authenticate(
         self,
         request: Request,
-        accepted_methods: Optional[List[str]] = None,
-    ) -> Union[RedirectResponse, AuthenticationResult]:
+        accepted_methods: list[str] | None = None,
+    ) -> RedirectResponse | AuthenticationResult:
         """Return an authentication result or a redirect to an identity provider."""
-        pass

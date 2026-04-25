@@ -1,8 +1,7 @@
 import asyncio
+from collections.abc import AsyncGenerator
+from collections.abc import Callable
 from typing import Any
-from typing import AsyncGenerator
-from typing import Callable
-from typing import Dict
 from unittest.mock import patch
 
 import pytest
@@ -56,7 +55,7 @@ async def simulate_request(client: TestClient, large_body):
 @pytest.mark.timeout(2)  # Enforce a 2-second timeout on the test
 async def test_large_request_body(
     client: TestClient,
-    large_body: Callable[[], AsyncGenerator[Dict[str, Any], None]],
+    large_body: Callable[[], AsyncGenerator[dict[str, Any], None]],
 ) -> None:
     """
     Test that the FastAPI app handles a large request body correctly.

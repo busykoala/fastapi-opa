@@ -1,11 +1,13 @@
 """Tests for Cookie Authentication Middleware"""
 
-from typing import Dict
+from typing import Any
+from typing import cast
 from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from fastapi_opa import OPAConfig
 from fastapi_opa.models import AuthenticationResult
@@ -53,7 +55,9 @@ class TestTokenCookieConfig:
         """Test that config is immutable"""
         config = TokenCookieConfig()
 
-        with pytest.raises(Exception):  # ValidationError for frozen model
+        with pytest.raises(
+            ValidationError
+        ):  # ValidationError for frozen model
             config.cookie_name = "new_name"
 
     def test_samesite_strict_valid(self):
@@ -76,7 +80,7 @@ class TestTokenCookieConfig:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
-            TokenCookieConfig(cookie_samesite="invalid")
+            TokenCookieConfig(cookie_samesite=cast(Any, "invalid"))
 
         # Verify the error mentions the invalid value
         assert "cookie_samesite" in str(exc_info.value)
@@ -86,7 +90,7 @@ class TestTokenCookieConfig:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
-            TokenCookieConfig(cookie_samesite="")
+            TokenCookieConfig(cookie_samesite=cast(Any, ""))
 
     def test_samesite_case_sensitive(self):
         """Test that samesite values are case-sensitive (lowercase required)"""
@@ -94,13 +98,13 @@ class TestTokenCookieConfig:
 
         # Uppercase should be rejected
         with pytest.raises(ValidationError):
-            TokenCookieConfig(cookie_samesite="Strict")
+            TokenCookieConfig(cookie_samesite=cast(Any, "Strict"))
 
         with pytest.raises(ValidationError):
-            TokenCookieConfig(cookie_samesite="LAX")
+            TokenCookieConfig(cookie_samesite=cast(Any, "LAX"))
 
         with pytest.raises(ValidationError):
-            TokenCookieConfig(cookie_samesite="None")
+            TokenCookieConfig(cookie_samesite=cast(Any, "None"))
 
 
 class TestAuthenticationResult:
@@ -116,8 +120,11 @@ class TestAuthenticationResult:
         )
 
         assert result.success is True
+        assert result.user_info is not None
         assert result.user_info["sub"] == "user123"
+        assert result.validated_token is not None
         assert result.validated_token["sub"] == "user123"
+        assert result.raw_tokens is not None
         assert result.raw_tokens["access_token"] == "token123"
         assert result.error is None
 
@@ -138,7 +145,9 @@ class TestAuthenticationResult:
         """Test that result is immutable"""
         result = AuthenticationResult(success=True)
 
-        with pytest.raises(Exception):  # ValidationError for frozen model
+        with pytest.raises(
+            ValidationError
+        ):  # ValidationError for frozen model
             result.success = False
 
 
@@ -200,7 +209,7 @@ class TestCookieMiddlewareHelpers:
             cookie_config=cookie_config,
         )
 
-        header_name, header_value = middleware._create_cookie_header("token")
+        _header_name, header_value = middleware._create_cookie_header("token")
         value_str = header_value.decode("latin-1")
 
         assert "Domain=.example.com" in value_str
@@ -322,10 +331,10 @@ class TestCookieMiddlewareIntegration:
         )
 
         @app.get("/")
-        async def root() -> Dict:
+        async def root() -> dict:
             return {"msg": "success"}
 
-        yield TestClient(app)
+        return TestClient(app)
 
     def test_request_without_cookie_or_auth(self, client_with_cookies):
         """Test request without cookie or authorization header"""
@@ -343,7 +352,7 @@ class TestCookieMiddlewareIntegration:
     def test_cookie_config_samesite_options(self):
         """Test different SameSite options"""
         for samesite in ["strict", "lax", "none"]:
-            config = TokenCookieConfig(cookie_samesite=samesite)
+            config = TokenCookieConfig(cookie_samesite=cast(Any, samesite))
             assert config.cookie_samesite == samesite
 
 
@@ -366,7 +375,7 @@ class TestCookieMiddlewareEdgeCases:
 
         # Token with base64-like characters
         token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
-        header_name, header_value = middleware._create_cookie_header(token)
+        _header_name, header_value = middleware._create_cookie_header(token)
 
         value_str = header_value.decode("latin-1")
         assert f"access_token={token}" in value_str
@@ -432,7 +441,7 @@ class TestCookieMiddlewareEdgeCases:
             cookie_config=config,
         )
 
-        header_name, header_value = middleware._create_cookie_header("token")
+        _header_name, header_value = middleware._create_cookie_header("token")
         value_str = header_value.decode("latin-1")
 
         assert "Path=/api/v1" in value_str
@@ -511,10 +520,16 @@ class TestCookieMiddlewareThreadSafety:
         # The middleware no longer modifies global state
         # Verify the global config remains unchanged after middleware creation
         assert (
-            middleware1.config.authentication[0].config.get_user_info is True
+            cast(
+                Any, middleware1.config.authentication[0]
+            ).config.get_user_info
+            is True
         )
         assert (
-            middleware2.config.authentication[0].config.get_user_info is True
+            cast(
+                Any, middleware2.config.authentication[0]
+            ).config.get_user_info
+            is True
         )
 
     @pytest.mark.asyncio
@@ -675,7 +690,7 @@ class TestASGIProtocolCompliance:
                 }
             )
 
-        middleware.handle_token_expired = mock_handle_token_expired
+        middleware.handle_token_expired = cast(Any, mock_handle_token_expired)
 
         # Simulate the app sending a 401 response followed by body
         messages_from_app = [
@@ -689,7 +704,7 @@ class TestASGIProtocolCompliance:
             for msg in messages_from_app:
                 await send(msg)
 
-        middleware.opa = mock_app
+        middleware.opa = cast(Any, mock_app)
 
         # Execute
         await middleware(scope, AsyncMock(), track_send)
@@ -773,7 +788,7 @@ class TestASGIProtocolCompliance:
                 }
             )
 
-        middleware.opa = mock_app
+        middleware.opa = cast(Any, mock_app)
 
         # Execute
         await middleware(scope, AsyncMock(), track_send)
@@ -838,7 +853,7 @@ class TestASGIProtocolCompliance:
                 }
             )
 
-        middleware.opa = mock_app
+        middleware.opa = cast(Any, mock_app)
 
         # Execute
         await middleware(scope, AsyncMock(), track_send)
@@ -904,7 +919,7 @@ class TestASGIProtocolCompliance:
                 }
             )
 
-        middleware.opa = mock_app
+        middleware.opa = cast(Any, mock_app)
 
         await middleware(scope, AsyncMock(), track_send)
 
@@ -1003,7 +1018,7 @@ class TestASGIProtocolCompliance:
                 }
             )
 
-        middleware.opa = mock_app
+        middleware.opa = cast(Any, mock_app)
 
         await middleware(scope, AsyncMock(), track_send)
 

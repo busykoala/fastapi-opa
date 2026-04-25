@@ -21,6 +21,7 @@ qa:
 	PIP_NO_BINARY=$(PIP_NO_BINARY_FIX) $(UV) run pip install --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec; \
 	$(UV) run ruff check; \
 	$(UV) run ruff format --check; \
+	$(UV) run ty check; \
 	$(UV) run vale README.md CONTRIBUTING.md; \
 	$(UV) run pytest; \
 	$(UV) run bandit -r fastapi_opa --exclude="fastapi_opa/example_oidc.py,fastapi_opa/example_saml.py"; \
@@ -39,6 +40,7 @@ ci-qa:
 		PIP_NO_BINARY=$(PIP_NO_BINARY_FIX) UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v pip install --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v ruff check; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v ruff format --check; \
+		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v ty check; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v vale README.md CONTRIBUTING.md; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v pytest; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v bandit -r fastapi_opa --exclude="fastapi_opa/example_oidc.py,fastapi_opa/example_saml.py"; \

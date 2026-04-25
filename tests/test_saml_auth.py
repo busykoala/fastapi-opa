@@ -1,7 +1,8 @@
+from unittest.mock import AsyncMock
 from unittest.mock import Mock
+from unittest.mock import patch
 
 import pytest
-from mock import patch
 from starlette.responses import RedirectResponse
 
 from fastapi_opa.auth.auth_saml import SAMLAuthentication
@@ -41,6 +42,71 @@ async def test_single_sign_on_with_parameter():
 
     assert isinstance(response, RedirectResponse)
     assert response.headers.get("location") == attr_url
+
+
+@pytest.mark.asyncio
+async def test_authenticate_passes_config_to_prepare_request():
+    saml_conf = SAMLConfig(
+        settings_directory="./tests/test_data/saml",
+        app_uri="https://public.example.com/prefix",
+    )
+    saml_auth = SAMLAuthentication(saml_conf)
+    request_mock = Mock()
+    request_mock.query_params = {"sso": ""}
+
+    saml_auth_mock = Mock()
+    saml_auth_mock.login.return_value = "http://idp.com/cryptic-stuff"
+
+    with (
+        patch.object(
+            SAMLAuthentication,
+            "prepare_request",
+            new=AsyncMock(return_value={"get_data": {}, "post_data": {}}),
+        ) as prepare_request_mock,
+        patch.object(
+            SAMLAuthentication,
+            "init_saml_auth",
+            new=AsyncMock(return_value=saml_auth_mock),
+        ),
+    ):
+        response = await saml_auth.authenticate(request_mock)
+
+    prepare_request_mock.assert_awaited_once_with(request_mock, saml_conf)
+    assert isinstance(response, RedirectResponse)
+
+
+@pytest.mark.asyncio
+async def test_single_log_out_from_idp_passes_config_to_prepare_request():
+    saml_conf = SAMLConfig(
+        settings_directory="./tests/test_data/saml",
+        app_uri="https://public.example.com/prefix",
+    )
+    saml_auth = SAMLAuthentication(saml_conf)
+    request_mock = Mock()
+    request_mock.query_params = {}
+    request_mock.session.clear = Mock()
+
+    saml_auth_mock = Mock()
+    saml_auth_mock.process_slo.return_value = None
+    saml_auth_mock.get_errors.return_value = []
+
+    with (
+        patch.object(
+            SAMLAuthentication,
+            "prepare_request",
+            new=AsyncMock(return_value={"get_data": {}, "post_data": {}}),
+        ) as prepare_request_mock,
+        patch.object(
+            SAMLAuthentication,
+            "init_saml_auth",
+            new=AsyncMock(return_value=saml_auth_mock),
+        ),
+    ):
+        response = await saml_auth.single_log_out_from_idp(request_mock)
+
+    prepare_request_mock.assert_awaited_once_with(request_mock, saml_conf)
+    assert isinstance(response, AuthenticationResult)
+    assert response.success is True
 
 
 @pytest.mark.asyncio

@@ -25,6 +25,7 @@ import pytest
 
 from fastapi_opa.auth.auth_oidc import OIDCAuthentication
 from fastapi_opa.auth.auth_oidc import OIDCConfig
+from fastapi_opa.models import AuthenticationResult
 from fastapi_opa.models import TokenCookieConfig
 from tests.utils import mock_response
 from tests.utils import oidc_well_known_response
@@ -139,6 +140,7 @@ class TestTokenExposureWithPreserveTokensTrue:
         result = await oidc.authenticate(request)
 
         # SECURITY ISSUE: Raw tokens are exposed in the result
+        assert isinstance(result, AuthenticationResult)
         assert result.success is True
         assert result.raw_tokens is not None
         assert result.raw_tokens["access_token"] == access_token
@@ -210,6 +212,7 @@ class TestTokenExposureWithPreserveTokensTrue:
         result = await oidc.authenticate(request)
 
         # SECURE: No raw tokens exposed
+        assert isinstance(result, AuthenticationResult)
         assert result.success is True
         assert result.raw_tokens is None
 
@@ -330,6 +333,7 @@ class TestTokenLeakageScenarios:
 
         # Simulating what happens when someone logs the auth result
         # This is a common debugging mistake
+        assert isinstance(result, AuthenticationResult)
         result_str = str(result.model_dump())
 
         # SECURITY ISSUE: Sensitive token is in the string representation
@@ -391,6 +395,7 @@ class TestTokenLeakageScenarios:
         result = await oidc.authenticate(request)
 
         # SECURE: Token is NOT in the result
+        assert isinstance(result, AuthenticationResult)
         result_str = str(result.model_dump())
         assert "super_secret_token_do_not_log" not in result_str
 
@@ -553,6 +558,7 @@ class TestAccessTokenViaBearer:
         result = await oidc.authenticate(request, ["access_token"])
 
         # SECURITY ISSUE: The bearer token is exposed
+        assert isinstance(result, AuthenticationResult)
         assert result.success is True
         assert result.raw_tokens is not None
         assert result.raw_tokens["access_token"] == "secret_bearer_token_xyz"
@@ -600,5 +606,6 @@ class TestAccessTokenViaBearer:
         result = await oidc.authenticate(request, ["access_token"])
 
         # SECURE: Token is not exposed
+        assert isinstance(result, AuthenticationResult)
         assert result.success is True
         assert result.raw_tokens is None

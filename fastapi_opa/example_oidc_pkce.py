@@ -14,8 +14,6 @@ Key features shown:
 - Cookie-based token storage for session management
 """
 
-from typing import Dict
-
 from fastapi import FastAPI
 from fastapi import Request
 
@@ -33,7 +31,7 @@ opa_host = "http://localhost:8181"
 # Public clients don't require a client_secret - PKCE provides the security
 oidc_config = OIDCConfig(
     # Well-known endpoint for auto-discovery of OIDC endpoints
-    well_known_endpoint="http://localhost:8080/realms/example-realm/.well-known/openid-configuration",  # noqa
+    well_known_endpoint="http://localhost:8080/realms/example-realm/.well-known/openid-configuration",
     # Host where this app is running
     app_uri="http://localhost:5000",
     # Client ID configured in the identity provider
@@ -91,13 +89,13 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root(request: Request) -> Dict:
+async def root(request: Request) -> dict[str, str]:
     """Public endpoint that requires authentication via PKCE flow."""
     return {"msg": "success", "user": "authenticated via PKCE"}
 
 
 @app.get("/profile")
-async def profile(request: Request) -> Dict:
+async def profile(request: Request) -> dict[str, str]:
     """
     Example endpoint showing how to access token claims.
 

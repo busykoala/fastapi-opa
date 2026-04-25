@@ -1,5 +1,8 @@
 """Tests for conditional Authlib import handling."""
 
+from typing import Any
+from typing import cast
+
 import pytest
 
 
@@ -56,7 +59,7 @@ class TestAuthlibNotInstalled:
                     "Install it with: pip install 'fastapi-opa[authlib]'"
                 )
 
-            auth_oidc.generate_token = mock_generate_token
+            auth_oidc.generate_token = cast(Any, mock_generate_token)
 
             # Test that it raises ImportError with helpful message
             with pytest.raises(ImportError) as exc_info:
@@ -68,7 +71,7 @@ class TestAuthlibNotInstalled:
         finally:
             # Restore original
             auth_oidc.AUTHLIB_AVAILABLE = original_available
-            auth_oidc.generate_token = original_generate
+            auth_oidc.generate_token = cast(Any, original_generate)
 
     def test_import_error_message_for_create_s256_code_challenge(self):
         """Test that helpful error is raised for create_s256_code_challenge."""
@@ -89,7 +92,9 @@ class TestAuthlibNotInstalled:
                     "Install it with: pip install 'fastapi-opa[authlib]'"
                 )
 
-            auth_oidc.create_s256_code_challenge = mock_create_challenge
+            auth_oidc.create_s256_code_challenge = cast(
+                Any, mock_create_challenge
+            )
 
             # Test that it raises ImportError with helpful message
             with pytest.raises(ImportError) as exc_info:
@@ -101,7 +106,7 @@ class TestAuthlibNotInstalled:
         finally:
             # Restore original
             auth_oidc.AUTHLIB_AVAILABLE = original_available
-            auth_oidc.create_s256_code_challenge = original_create
+            auth_oidc.create_s256_code_challenge = cast(Any, original_create)
 
 
 class TestOIDCAuthenticationWithoutAuthlib:
@@ -133,11 +138,14 @@ class TestOIDCAuthenticationWithoutAuthlib:
 
         # Save and mock
         original_generate = auth_oidc.generate_token
-        auth_oidc.generate_token = lambda length=48: (_ for _ in ()).throw(
-            ImportError(
-                f"authlib is required for OIDC authentication with PKCE. "
-                f"Install it with: {expected_command}"
-            )
+        auth_oidc.generate_token = cast(
+            Any,
+            lambda length=48: (_ for _ in ()).throw(
+                ImportError(
+                    f"authlib is required for OIDC authentication with PKCE. "
+                    f"Install it with: {expected_command}"
+                )
+            ),
         )
 
         try:
@@ -147,4 +155,4 @@ class TestOIDCAuthenticationWithoutAuthlib:
             assert expected_command in str(exc_info.value)
 
         finally:
-            auth_oidc.generate_token = original_generate
+            auth_oidc.generate_token = cast(Any, original_generate)

@@ -1,8 +1,12 @@
 """Tests for PKCE (Proof Key for Code Exchange) implementation"""
 
+import datetime
 from unittest.mock import Mock
 from unittest.mock import patch
+from urllib.parse import parse_qs
+from urllib.parse import urlparse
 
+import jwt
 import pytest
 from authlib.oauth2.rfc7636 import create_s256_code_challenge
 
@@ -12,6 +16,7 @@ from fastapi_opa.auth.auth_oidc import PKCE_CODE_VERIFIER_MIN_LENGTH
 from fastapi_opa.auth.auth_oidc import OIDCAuthentication
 from fastapi_opa.auth.auth_oidc import OIDCConfig
 from fastapi_opa.auth.exceptions import OIDCException
+from fastapi_opa.models import AuthenticationResult
 from tests.utils import mock_response
 from tests.utils import oidc_well_known_response
 
@@ -319,17 +324,84 @@ class TestPKCEAuthorizationRedirect:
         )
         oidc = OIDCAuthentication(config)
 
-        # Generate PKCE pair and pass code_challenge explicitly
+        # Generate PKCE pair and pass the full explicit PKCE tuple
         code_verifier, code_challenge = oidc._generate_pkce_pair()
         redirect_uri = oidc.get_auth_redirect_uri(
             "http://callback/path",
             code_challenge=code_challenge,
             state="test_state",
+            code_verifier=code_verifier,
         )
 
         assert f"code_challenge={code_challenge}" in redirect_uri
         assert "code_challenge_method=S256" in redirect_uri
         assert "state=test_state" in redirect_uri
+
+    @pytest.mark.asyncio
+    async def test_explicit_pkce_values_round_trip_through_callback(
+        self, mocker
+    ):
+        mocker.patch(
+            "fastapi_opa.auth.auth_oidc.requests.get",
+            return_value=oidc_well_known_response(),
+        )
+        config = OIDCConfig(
+            well_known_endpoint="http://example.com/.well-known",
+            app_uri="http://app.example.com",
+            client_id="test-client",
+            client_secret="test-secret",
+        )
+        oidc = OIDCAuthentication(config)
+
+        code_verifier = "a" * 64
+        code_challenge = create_s256_code_challenge(code_verifier)
+        redirect_uri = oidc.get_auth_redirect_uri(
+            "http://app.example.com/callback",
+            code_challenge=code_challenge,
+            code_verifier=code_verifier,
+            state="explicit-state",
+        )
+        redirect_params = parse_qs(urlparse(redirect_uri).query)
+        nonce = redirect_params["nonce"][0]
+
+        iat = datetime.datetime.now().timestamp()
+        token_payload = {
+            "sub": "user123",
+            "aud": "test-client",
+            "iss": "http://keycloak.busykoala.ch/auth/realms/example-realm",
+            "nonce": nonce,
+            "iat": int(iat),
+            "exp": int(iat + 3600),
+        }
+        id_token = jwt.encode(token_payload, "test-secret", algorithm="HS256")
+
+        post_mock = mocker.patch(
+            "fastapi_opa.auth.auth_oidc.requests.post",
+            return_value=mock_response(
+                200,
+                {"access_token": "access123", "id_token": id_token},
+            ),
+        )
+
+        request = Mock()
+        request.headers = {}
+        request.query_params = {"code": "auth_code", "state": "explicit-state"}
+        request.url = Mock(
+            scheme="http", netloc="app.example.com", path="/callback"
+        )
+
+        result = await oidc.authenticate(request)
+
+        assert isinstance(result, AuthenticationResult)
+        assert result.success is True
+        assert (
+            post_mock.call_args.kwargs["data"]["code_verifier"]
+            == code_verifier
+        )
+        assert (
+            post_mock.call_args.kwargs["data"]["redirect_uri"]
+            == "http://app.example.com/callback"
+        )
 
     def test_code_verifier_matches_code_challenge(self, mocker):
         """Verify code_verifier can be validated against code_challenge"""
@@ -411,6 +483,7 @@ class TestPreserveTokensOption:
 
         result = await oidc.authenticate(request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is True
         assert result.raw_tokens is not None
         assert result.raw_tokens["access_token"] == "access123"
@@ -471,6 +544,7 @@ class TestPreserveTokensOption:
 
         result = await oidc.authenticate(request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is True
         assert result.raw_tokens is None
 

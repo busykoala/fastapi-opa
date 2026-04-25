@@ -1,6 +1,4 @@
-from typing import Dict
 from typing import Literal
-from typing import Optional
 
 from pydantic import BaseModel
 from pydantic import ConfigDict
@@ -17,7 +15,7 @@ class TokenCookieConfig(BaseModel):
 
     enabled: bool = True
     cookie_name: str = "access_token"
-    cookie_domain: Optional[str] = None
+    cookie_domain: str | None = None
     cookie_path: str = "/"
     cookie_secure: bool = True
     cookie_httponly: bool = True
@@ -30,7 +28,7 @@ class AuthenticationResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     success: bool
-    user_info: Optional[Dict] = Field(default=None)
-    validated_token: Optional[Dict] = Field(default=None)
-    raw_tokens: Optional[Dict] = Field(default=None)
-    error: Optional[str] = Field(default=None)
+    user_info: dict[str, object] | None = Field(default=None)
+    validated_token: dict[str, object] | None = Field(default=None)
+    raw_tokens: dict[str, str] | None = Field(default=None)
+    error: str | None = Field(default=None)

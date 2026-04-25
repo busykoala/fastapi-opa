@@ -12,6 +12,7 @@ from jwt.exceptions import InvalidTokenError
 from fastapi_opa.auth.auth_oidc import OIDCAuthentication
 from fastapi_opa.auth.auth_oidc import OIDCConfig
 from fastapi_opa.auth.exceptions import OIDCException
+from fastapi_opa.models import AuthenticationResult
 
 
 @pytest.fixture
@@ -65,7 +66,9 @@ class TestNetworkExceptionHandling:
         ):
             result = await auth.authenticate(mock_request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is False
+        assert result.error is not None
         assert "Network error" in result.error
 
     @pytest.mark.asyncio
@@ -83,7 +86,9 @@ class TestNetworkExceptionHandling:
         ):
             result = await auth.authenticate(mock_request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is False
+        assert result.error is not None
         assert "Network error" in result.error
 
     @pytest.mark.asyncio
@@ -101,7 +106,9 @@ class TestNetworkExceptionHandling:
         ):
             result = await auth.authenticate(mock_request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is False
+        assert result.error is not None
         assert "Network error" in result.error
 
     @pytest.mark.asyncio
@@ -112,13 +119,15 @@ class TestNetworkExceptionHandling:
         auth = OIDCAuthentication(oidc_config)
         auth._store_pkce_verifier("state_123", "test_verifier")
 
-        with caplog.at_level(logging.ERROR):
-            with patch.object(
+        with (
+            caplog.at_level(logging.ERROR),
+            patch.object(
                 auth,
                 "get_auth_token",
                 side_effect=requests.ConnectionError("Connection refused"),
-            ):
-                await auth.authenticate(mock_request)
+            ),
+        ):
+            await auth.authenticate(mock_request)
 
         assert "Network error during OIDC authentication" in caplog.text
 
@@ -134,17 +143,24 @@ class TestJWTExceptionHandling:
         auth = OIDCAuthentication(oidc_config)
         auth._store_pkce_verifier("state_123", "test_verifier")
 
-        with patch.object(
-            auth, "get_auth_token", return_value={"id_token": "invalid_token"}
-        ):
-            with patch(
+        with (
+            patch.object(
+                auth,
+                "get_auth_token",
+                return_value={"id_token": "invalid_token"},
+            ),
+            patch(
                 "jwt.get_unverified_header",
                 side_effect=DecodeError("Invalid token format"),
-            ):
-                result = await auth.authenticate(mock_request)
+            ),
+        ):
+            result = await auth.authenticate(mock_request)
 
         # DecodeError is caught and wrapped in OIDCException by existing code
+        assert isinstance(result, AuthenticationResult)
         assert result.success is False
+        assert result.error is not None
+        assert "Error getting unverified header in jwt." in result.error
 
     @pytest.mark.asyncio
     async def test_invalid_token_error_returns_auth_result(
@@ -154,22 +170,24 @@ class TestJWTExceptionHandling:
         auth = OIDCAuthentication(oidc_config)
         auth._store_pkce_verifier("state_123", "test_verifier")
 
-        with patch.object(
-            auth,
-            "get_auth_token",
-            return_value={"id_token": "eyJhbGciOiJSUzI1NiJ9.e30.sig"},
+        with (
+            patch.object(
+                auth,
+                "get_auth_token",
+                return_value={"id_token": "eyJhbGciOiJSUzI1NiJ9.e30.sig"},
+            ),
+            patch("jwt.get_unverified_header", return_value={"alg": "RS256"}),
+            patch.object(
+                auth,
+                "obtain_validated_token",
+                side_effect=InvalidTokenError("Token expired"),
+            ),
         ):
-            with patch(
-                "jwt.get_unverified_header", return_value={"alg": "RS256"}
-            ):
-                with patch.object(
-                    auth,
-                    "obtain_validated_token",
-                    side_effect=InvalidTokenError("Token expired"),
-                ):
-                    result = await auth.authenticate(mock_request)
+            result = await auth.authenticate(mock_request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is False
+        assert result.error is not None
         assert "Token validation failed" in result.error
 
     @pytest.mark.asyncio
@@ -178,23 +196,21 @@ class TestJWTExceptionHandling:
         auth = OIDCAuthentication(oidc_config)
         auth._store_pkce_verifier("state_123", "test_verifier")
 
-        with caplog.at_level(logging.ERROR):
-            with patch.object(
+        with (
+            caplog.at_level(logging.ERROR),
+            patch.object(
                 auth,
                 "get_auth_token",
                 return_value={"id_token": "eyJhbGciOiJSUzI1NiJ9.e30.sig"},
-            ):
-                with patch(
-                    "jwt.get_unverified_header", return_value={"alg": "RS256"}
-                ):
-                    with patch.object(
-                        auth,
-                        "obtain_validated_token",
-                        side_effect=InvalidTokenError(
-                            "Signature verification failed"
-                        ),
-                    ):
-                        await auth.authenticate(mock_request)
+            ),
+            patch("jwt.get_unverified_header", return_value={"alg": "RS256"}),
+            patch.object(
+                auth,
+                "obtain_validated_token",
+                side_effect=InvalidTokenError("Signature verification failed"),
+            ),
+        ):
+            await auth.authenticate(mock_request)
 
         assert "JWT error during OIDC authentication" in caplog.text
 
@@ -215,7 +231,9 @@ class TestUnexpectedExceptionHandling:
         ):
             result = await auth.authenticate(mock_request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is False
+        assert result.error is not None
         assert "unexpected error" in result.error.lower()
 
     @pytest.mark.asyncio
@@ -226,13 +244,15 @@ class TestUnexpectedExceptionHandling:
         auth = OIDCAuthentication(oidc_config)
         auth._store_pkce_verifier("state_123", "test_verifier")
 
-        with caplog.at_level(logging.ERROR):
-            with patch.object(
+        with (
+            caplog.at_level(logging.ERROR),
+            patch.object(
                 auth,
                 "get_auth_token",
                 side_effect=RuntimeError("Unexpected failure"),
-            ):
-                await auth.authenticate(mock_request)
+            ),
+        ):
+            await auth.authenticate(mock_request)
 
         assert "Unexpected error during OIDC authentication" in caplog.text
 
@@ -247,7 +267,9 @@ class TestUnexpectedExceptionHandling:
         ):
             result = await auth.authenticate(mock_request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is False
+        assert result.error is not None
         assert "unexpected error" in result.error.lower()
 
     @pytest.mark.asyncio
@@ -261,7 +283,9 @@ class TestUnexpectedExceptionHandling:
         ):
             result = await auth.authenticate(mock_request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is False
+        assert result.error is not None
         assert "unexpected error" in result.error.lower()
 
 
@@ -283,7 +307,9 @@ class TestOIDCExceptionHandling:
         ):
             result = await auth.authenticate(mock_request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is False
+        assert result.error is not None
         assert "Token exchange failed" in result.error
 
     @pytest.mark.asyncio
@@ -296,7 +322,9 @@ class TestOIDCExceptionHandling:
 
         result = await auth.authenticate(mock_request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is False
+        assert result.error is not None
         assert "Invalid or missing state" in result.error
 
 
@@ -318,6 +346,7 @@ class TestPreserveTokensOnError:
         ):
             result = await auth.authenticate(mock_request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.raw_tokens is None
 
     @pytest.mark.asyncio
@@ -338,16 +367,17 @@ class TestPreserveTokensOnError:
 
         # Return partial token then fail
         auth_token = {"id_token": "partial_token"}
-        with patch.object(auth, "get_auth_token", return_value=auth_token):
-            with patch(
-                "jwt.get_unverified_header", return_value={"alg": "RS256"}
-            ):
-                with patch.object(
-                    auth,
-                    "obtain_validated_token",
-                    side_effect=InvalidTokenError("Invalid"),
-                ):
-                    result = await auth.authenticate(mock_request)
+        with (
+            patch.object(auth, "get_auth_token", return_value=auth_token),
+            patch("jwt.get_unverified_header", return_value={"alg": "RS256"}),
+            patch.object(
+                auth,
+                "obtain_validated_token",
+                side_effect=InvalidTokenError("Invalid"),
+            ),
+        ):
+            result = await auth.authenticate(mock_request)
 
+        assert isinstance(result, AuthenticationResult)
         assert result.success is False
         assert result.raw_tokens == auth_token

@@ -1,11 +1,6 @@
+import logging
 from dataclasses import dataclass
 from json import JSONDecodeError
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 from graphql import GraphQLCoreBackend
 from graphql import GraphQLField
@@ -22,13 +17,15 @@ from starlette.requests import Request
 
 from fastapi_opa.opa.opa_config import Injectable
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class OperationData:
     name: str
     operation: str
-    variables: Dict[str, str]
-    selection_set: Any
+    variables: dict[str, str]
+    selection_set: list[object]
 
 
 class GraphQLAnalysis:
@@ -38,8 +35,8 @@ class GraphQLAnalysis:
     schema = GraphQLSchema(type)
     backend = GraphQLCoreBackend()
 
-    def __init__(self, payload: Dict) -> None:
-        self.operations = []
+    def __init__(self, payload: dict[str, object] | None) -> None:
+        self.operations: list[OperationData] = []
         operation_defs = self.get_operation_defs(payload)
         for operation_def in operation_defs:
             self.operations.append(
@@ -57,18 +54,31 @@ class GraphQLAnalysis:
                 )
             )
 
-    def get_operation_defs(self, payload: Dict) -> List[OperationDefinition]:
+    def get_operation_defs(
+        self, payload: dict[str, object] | None
+    ) -> list[OperationDefinition]:
+        if payload is None:
+            return []
         gql_query = payload.get("query")
+        if not isinstance(gql_query, str):
+            return []
         doc = self.backend.document_from_string(
             schema=self.schema, document_string=gql_query
         )
-        return doc.document_ast.definitions
+        definitions = doc.document_ast.definitions
+        return [
+            definition
+            for definition in definitions
+            if isinstance(definition, OperationDefinition)
+        ]
 
     def extract_selection_set(
-        self, selection_set: Union[SelectionSet, Tuple], result: List
-    ) -> List:
+        self,
+        selection_set: SelectionSet | tuple[object, ...] | None,
+        result: list[object],
+    ) -> list[object]:
         if isinstance(selection_set, SelectionSet):
-            result_part = []
+            result_part: list[object] = []
             for field in selection_set.selections:
                 result_part.append(field.name.value)
                 self.extract_selection_set(field.selection_set, result_part)
@@ -76,9 +86,9 @@ class GraphQLAnalysis:
         return result
 
     def extract_variables(
-        self, variable_definitions: List[VariableDefinition]
-    ) -> Dict:
-        variables = {}
+        self, variable_definitions: list[VariableDefinition] | None
+    ) -> dict[str, str]:
+        variables: dict[str, str] = {}
         if not variable_definitions:
             return {}
         for var_def in variable_definitions:
@@ -89,26 +99,35 @@ class GraphQLAnalysis:
 
     def deep_extract_type(
         self,
-        item_type: Union[ListType, NamedType],
-        type_str: Optional[str] = "{}",
+        item_type: ListType | NamedType | NonNullType,
+        type_str: str = "{}",
     ) -> str:
         if isinstance(item_type, ListType):
             return self.deep_extract_type(item_type.type, "[{}]")
-        elif isinstance(item_type, NonNullType):
+        if isinstance(item_type, NonNullType):
             return self.deep_extract_type(item_type.type, type_str)
-        else:
-            return type_str.format(item_type.name.value)
+        return type_str.format(item_type.name.value)
 
 
 class GraphQLInjectable(Injectable):
-    async def extract(self, request: Request) -> List:
+    async def extract(self, request: Request) -> list[object]:
         payload = await self.get_payload(request)
         analyser = GraphQLAnalysis(payload)
-        return [op_data.__dict__ for op_data in analyser.operations]
+        return [
+            {
+                "name": op_data.name,
+                "operation": op_data.operation,
+                "variables": op_data.variables,
+                "selection_set": op_data.selection_set,
+            }
+            for op_data in analyser.operations
+        ]
 
     @staticmethod
-    async def get_payload(request):
+    async def get_payload(request: Request) -> dict[str, object] | None:
         try:
-            return await request.json()
+            payload = await request.json()
         except JSONDecodeError:
-            return
+            logger.debug("Failed to parse request body as JSON")
+            return None
+        return payload if isinstance(payload, dict) else None

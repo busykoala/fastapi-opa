@@ -5,10 +5,8 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
-from typing import Dict
 from typing import Optional
 from typing import Protocol
-from typing import Tuple
 from typing import runtime_checkable
 
 logger = logging.getLogger(__name__)
@@ -24,7 +22,45 @@ class PKCERequestData:
 
     code_verifier: str
     callback_uri: str
-    nonce: Optional[str] = None
+    nonce: str | None = None
+
+
+def serialize_request_data(
+    code_verifier: str, callback_uri: str, nonce: str | None = None
+) -> str:
+    return json.dumps(
+        {
+            "code_verifier": code_verifier,
+            "callback_uri": callback_uri,
+            "nonce": nonce,
+        }
+    )
+
+
+def deserialize_request_data(entry: str) -> PKCERequestData:
+    try:
+        parsed = json.loads(entry)
+        if isinstance(parsed, dict) and "code_verifier" in parsed:
+            return PKCERequestData(
+                code_verifier=parsed.get("code_verifier", ""),
+                callback_uri=parsed.get("callback_uri", ""),
+                nonce=parsed.get("nonce"),
+            )
+    except json.JSONDecodeError:
+        pass
+
+    code_verifier, separator, callback_uri = entry.partition("\n")
+    if not separator:
+        return PKCERequestData(
+            code_verifier=entry,
+            callback_uri="",
+            nonce=None,
+        )
+    return PKCERequestData(
+        code_verifier=code_verifier,
+        callback_uri=callback_uri,
+        nonce=None,
+    )
 
 
 @runtime_checkable
@@ -63,7 +99,7 @@ class PKCEStoreProtocol(Protocol):
         """
         ...
 
-    def retrieve(self, state: str) -> Optional[str]:
+    def retrieve(self, state: str) -> str | None:
         """Retrieve and remove code_verifier for the given state.
 
         This operation MUST be atomic (retrieve + delete) to prevent
@@ -75,6 +111,30 @@ class PKCEStoreProtocol(Protocol):
         Returns:
             The code_verifier if found, None otherwise
         """
+        ...
+
+
+@runtime_checkable
+class ExtendedPKCEStoreProtocol(PKCEStoreProtocol, Protocol):
+    """Extended protocol for stores that support full request data (verifier + URI + nonce).
+
+    Implement this protocol to allow the OIDC flow to store and retrieve the
+    full request context atomically, which is required for correct PKCE + nonce
+    handling in distributed or multi-step flows.
+    """
+
+    def store_request_data(
+        self,
+        state: str,
+        code_verifier: str,
+        callback_uri: str,
+        nonce: str | None = None,
+    ) -> None:
+        """Store full PKCE request data."""
+        ...
+
+    def retrieve_request_data(self, state: str) -> Optional["PKCERequestData"]:
+        """Retrieve full PKCE request data."""
         ...
 
 
@@ -96,7 +156,7 @@ class InMemoryPKCEStore:
         max_entries: int = DEFAULT_MAX_ENTRIES,
     ) -> None:
         # state -> (verifier, timestamp)
-        self._store: Dict[str, Tuple[str, float]] = {}
+        self._store: dict[str, tuple[str, float]] = {}
         self._lock = threading.Lock()
         self._ttl_seconds = ttl_seconds
         self._max_entries = max_entries
@@ -118,7 +178,7 @@ class InMemoryPKCEStore:
         state: str,
         code_verifier: str,
         callback_uri: str,
-        nonce: Optional[str] = None,
+        nonce: str | None = None,
     ) -> None:
         """Store full PKCE request data.
 
@@ -127,10 +187,10 @@ class InMemoryPKCEStore:
         """
         self.store(
             state,
-            self._serialize_request_data(code_verifier, callback_uri, nonce),
+            serialize_request_data(code_verifier, callback_uri, nonce),
         )
 
-    def retrieve(self, state: str) -> Optional[str]:
+    def retrieve(self, state: str) -> str | None:
         """Retrieve and remove code_verifier, checking TTL."""
         with self._lock:
             entry = self._store.pop(state, None)
@@ -141,18 +201,19 @@ class InMemoryPKCEStore:
             # Check if expired
             if time.time() - timestamp > self._ttl_seconds:
                 logger.warning(
-                    f"PKCE entry expired for state (TTL: {self._ttl_seconds}s)"
+                    "PKCE entry expired for state (TTL: %ss)",
+                    self._ttl_seconds,
                 )
                 return None
 
             return code_verifier
 
-    def retrieve_request_data(self, state: str) -> Optional[PKCERequestData]:
+    def retrieve_request_data(self, state: str) -> PKCERequestData | None:
         """Retrieve full PKCE request data when available."""
         entry = self.retrieve(state)
         if entry is None:
             return None
-        return self._deserialize_request_data(entry)
+        return deserialize_request_data(entry)
 
     def cleanup_expired(self) -> int:
         """Remove all expired entries. Returns count of removed entries."""
@@ -170,7 +231,7 @@ class InMemoryPKCEStore:
         for state in expired:
             del self._store[state]
         if expired:
-            logger.debug(f"Cleaned up {len(expired)} expired PKCE entries")
+            logger.debug("Cleaned up %s expired PKCE entries", len(expired))
         return len(expired)
 
     def _remove_oldest_unsafe(self) -> None:
@@ -186,41 +247,3 @@ class InMemoryPKCEStore:
         """Current number of entries in the store."""
         with self._lock:
             return len(self._store)
-
-    @staticmethod
-    def _serialize_request_data(
-        code_verifier: str, callback_uri: str, nonce: Optional[str] = None
-    ) -> str:
-        return json.dumps(
-            {
-                "code_verifier": code_verifier,
-                "callback_uri": callback_uri,
-                "nonce": nonce,
-            }
-        )
-
-    @staticmethod
-    def _deserialize_request_data(entry: str) -> PKCERequestData:
-        try:
-            parsed = json.loads(entry)
-            if isinstance(parsed, dict) and "code_verifier" in parsed:
-                return PKCERequestData(
-                    code_verifier=parsed.get("code_verifier", ""),
-                    callback_uri=parsed.get("callback_uri", ""),
-                    nonce=parsed.get("nonce"),
-                )
-        except json.JSONDecodeError:
-            pass
-
-        code_verifier, separator, callback_uri = entry.partition("\n")
-        if not separator:
-            return PKCERequestData(
-                code_verifier=entry,
-                callback_uri="",
-                nonce=None,
-            )
-        return PKCERequestData(
-            code_verifier=code_verifier,
-            callback_uri=callback_uri,
-            nonce=None,
-        )

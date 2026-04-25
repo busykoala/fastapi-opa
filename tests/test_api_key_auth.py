@@ -25,11 +25,11 @@ async def test_key_api_auth(api_key_auth):
     assert answer.user_info["client"] == host
 
     # Do a failure due to wrong key
+    fake_request = FakeRequest({header_key: "098125u"}, fake_client)
     with pytest.raises(AuthenticationException):
-        fake_request = FakeRequest({header_key: "098125u"}, fake_client)
-        answer = await auth.authenticate(fake_request)
+        await auth.authenticate(fake_request)
 
     # Do a failure due to missing key
+    fake_request = FakeRequest({}, fake_client)
     with pytest.raises(AuthenticationException):
-        fake_request = FakeRequest({}, fake_client)
-        answer = await auth.authenticate(fake_request)
+        await auth.authenticate(fake_request)
