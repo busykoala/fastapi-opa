@@ -14,6 +14,11 @@ def test_query_parsing(test_payload, expected):
     assert expected == gql_analysis.operations
 
 
+def test_invalid_graphql_query_returns_empty_operations():
+    gql_analysis = GraphQLAnalysis(payload={"query": "invalid query !!!"})
+    assert gql_analysis.operations == []
+
+
 @pytest.mark.asyncio
 async def test_gql_injection(gql_injected_client):
     with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:

@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 from json import JSONDecodeError
 
+from graphql import GraphQLError
 from graphql import parse
 from graphql.language.ast import FieldNode
 from graphql.language.ast import ListTypeNode
@@ -54,7 +55,11 @@ class GraphQLAnalysis:
         gql_query = payload.get("query")
         if not isinstance(gql_query, str):
             return []
-        doc = parse(gql_query)
+        try:
+            doc = parse(gql_query)
+        except GraphQLError:
+            logger.warning("Failed to parse GraphQL query: invalid syntax")
+            return []
         definitions = doc.definitions
         return [
             definition
