@@ -58,7 +58,9 @@ class GraphQLAnalysis:
         try:
             doc = parse(gql_query)
         except GraphQLError:
-            logger.warning("Failed to parse GraphQL query: invalid syntax")
+            logger.warning(
+                "Failed to parse GraphQL query: %s", gql_query[:100]
+            )
             return []
         definitions = doc.definitions
         return [
