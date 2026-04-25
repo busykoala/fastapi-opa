@@ -1,5 +1,3 @@
-from typing import Dict
-
 from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
@@ -24,5 +22,5 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root(request: Request) -> Dict:
+async def root(request: Request) -> dict[str, str | None]:
     return {"msg": request.session.get("foo")}

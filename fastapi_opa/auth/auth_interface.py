@@ -1,10 +1,10 @@
 from abc import ABC
 from abc import abstractmethod
-from typing import Dict
-from typing import Union
 
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
+
+from fastapi_opa.models import AuthenticationResult
 
 
 class AuthInterface(ABC):
@@ -14,10 +14,8 @@ class AuthInterface(ABC):
 
     @abstractmethod
     async def authenticate(
-        self, request: Request
-    ) -> Union[RedirectResponse, Dict]:
-        """The method returns a dictionary containing the valid and authorized
-        users information or a redirect since some flows require calling a
-        identity broker beforehand.
-        """
-        pass
+        self,
+        request: Request,
+        accepted_methods: list[str] | None = None,
+    ) -> RedirectResponse | AuthenticationResult:
+        """Return an authentication result or a redirect to an identity provider."""

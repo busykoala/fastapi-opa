@@ -1,15 +1,13 @@
 from json import JSONDecodeError
-from typing import Dict
-from typing import List
-from typing import Union
+from unittest.mock import Mock
 
-from mock import Mock
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
 from fastapi_opa.auth import OIDCConfig
 from fastapi_opa.auth.auth_interface import AuthInterface
 from fastapi_opa.auth.exceptions import AuthenticationException
+from fastapi_opa.models import AuthenticationResult
 from fastapi_opa.opa.opa_config import Injectable
 
 
@@ -26,21 +24,23 @@ class AuthenticationDummy(AuthInterface):
     def __init__(self, accept_all=True):
         self.accept_all = accept_all
 
-    def authenticate(
-        self, request: Request, accepted_methods=[]
-    ) -> Union[RedirectResponse, Dict]:
+    async def authenticate(
+        self, request: Request, accepted_methods=None
+    ) -> RedirectResponse | AuthenticationResult:
         if not self.accept_all and "Authorization" not in request.headers:
             raise AuthenticationException("Unauthorized")
-        else:
-            return {
+        return AuthenticationResult(
+            success=True,
+            user_info={
                 "stuff": "some info",
                 "username": "John Doe",
                 "role": "Administrator",
-            }
+            },
+        )
 
 
 class OPAInjectableExample(Injectable):
-    async def extract(self, request: Request) -> List:
+    async def extract(self, request: Request) -> list:
         return [await self.get_payload(request)]
 
     @staticmethod
@@ -48,7 +48,7 @@ class OPAInjectableExample(Injectable):
         try:
             return await request.json()
         except JSONDecodeError:
-            return
+            return None
 
 
 # ***************************
@@ -59,17 +59,17 @@ def oidc_well_known_response():
         200,
         json_data={
             "issuer": "http://keycloak.busykoala.ch/auth/realms/example-realm",
-            "authorization_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/auth",  # noqa
-            "token_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/token",  # noqa
-            "userinfo_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/userinfo",  # noqa
-            "jwks_uri": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/certs",  # noqa
+            "authorization_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/auth",
+            "token_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/token",
+            "userinfo_endpoint": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/userinfo",
+            "jwks_uri": "http://keycloak.busykoala.ch/auth/realms/example-realm/protocol/openid-connect/certs",
         },
     )
 
 
 def oidc_config():
     return OIDCConfig(
-        well_known_endpoint="http://keycloak.busykoala.ch/auth/realms/example-realm/.well-known/openid-configuration",  # noqa
+        well_known_endpoint="http://keycloak.busykoala.ch/auth/realms/example-realm/.well-known/openid-configuration",
         app_uri="http://fastapi-app.busykoala.ch",
         client_id="example-client",
         client_secret="secret",

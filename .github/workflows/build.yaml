@@ -4,43 +4,73 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install uv
-      uses: astral-sh/setup-uv@v2
-    - name: Update system deps
-      run: sudo apt-get update
-    - name: Install system deps
-      run: sudo apt-get -y install libxml2-dev libxmlsec1-dev pkg-config libxmlsec1-openssl
-    - name: Install dependencies
-      run: |
-        uv sync --python ${{ matrix.python-version }} --all-extras --group dev
-        # Reinstall both from source using system libxml2
-        PIP_NO_BINARY="lxml,xmlsec" uv run --python ${{ matrix.python-version }} pip install --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec
-    - name: Codestyle Checks
-      run: |
-        uv run --python ${{ matrix.python-version }} ruff check
-        uv run --python ${{ matrix.python-version }} ruff format --check
-        uv run --python ${{ matrix.python-version }} vale README.md CONTRIBUTING.md
-    - name: Test with pytest
-      run: |
-        uv run --python ${{ matrix.python-version }} pytest
-    - name: Dependency Check
-      run: |
-        uv run --python ${{ matrix.python-version }} bandit -r fastapi_opa --exclude="fastapi_opa/example_oidc.py,fastapi_opa/example_saml.py"
-    - name: Vulnerability Audit
-      if: matrix.python-version != '3.8'
-      run: |
-        uv run --python ${{ matrix.python-version }} pysentry-rs
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+      - name: Update system deps
+        run: sudo apt-get update
+      - name: Install system deps
+        run: sudo apt-get -y install libxml2-dev libxmlsec1-dev pkg-config libxmlsec1-openssl
+      - name: Install dependencies
+        run: |
+          uv sync --python ${{ matrix.python-version }} --all-extras --group dev
+          # Reinstall both from source using system libxml2
+          PIP_NO_BINARY="lxml,xmlsec" uv run --python ${{ matrix.python-version }} pip install --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec
+      - name: Codestyle Checks
+        run: |
+          uv run --python ${{ matrix.python-version }} ruff check
+          uv run --python ${{ matrix.python-version }} ruff format --check
+          uv run --python ${{ matrix.python-version }} mypy
+          uv run --python ${{ matrix.python-version }} vale README.md CONTRIBUTING.md docs
+      - name: Test with pytest
+        run: |
+          uv run --python ${{ matrix.python-version }} pytest
+      - name: Dependency Check
+        run: |
+          uv run --python ${{ matrix.python-version }} bandit -r fastapi_opa --exclude="fastapi_opa/example_oidc.py,fastapi_opa/example_saml.py"
+      - name: Vulnerability Audit
+        run: |
+          uv run --python ${{ matrix.python-version }} pysentry-rs
+
+  lowest-direct:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+      - name: Update system deps
+        run: sudo apt-get update
+      - name: Install system deps
+        run: sudo apt-get -y install libxml2-dev libxmlsec1-dev pkg-config libxmlsec1-openssl
+      - name: Install lowest compatible direct dependencies
+        run: |
+          uv venv .venv-lowest --python ${{ matrix.python-version }}
+          uv pip install --python .venv-lowest/bin/python -r pyproject.toml --all-extras --resolution lowest-direct
+          uv pip install --python .venv-lowest/bin/python --group dev --resolution lowest-direct
+          PIP_NO_BINARY="lxml,xmlsec" uv pip install --python .venv-lowest/bin/python --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec
+      - name: Test lowest compatible direct dependencies
+        run: |
+          .venv-lowest/bin/python -m pytest

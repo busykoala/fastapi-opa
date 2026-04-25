@@ -1,32 +1,40 @@
-import asyncio
 import json
 import logging
 import re
+from collections.abc import Awaitable
 from json.decoder import JSONDecodeError
-from typing import List
-from typing import Optional
+from typing import Protocol
+from typing import cast
 
 import requests
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette.types import ASGIApp
+from starlette.types import Message
 from starlette.types import Receive
 from starlette.types import Scope
 from starlette.types import Send
 
 from fastapi_opa.auth.exceptions import AuthenticationException
+from fastapi_opa.models import AuthenticationResult
 from fastapi_opa.opa.opa_config import OPAConfig
 
 Pattern = re.Pattern
 logger = logging.getLogger(__name__)
 
 
-def should_skip_endpoint(endpoint: str, skip_endpoints: List[Pattern]) -> bool:
-    for skip in skip_endpoints:
-        if skip.match(endpoint):
-            return True
-    return False
+class ResponseLike(Protocol):
+    status_code: int
+    url: str
+
+    def json(self) -> object: ...
+
+
+def should_skip_endpoint(
+    endpoint: str, skip_endpoints: list[Pattern[str]]
+) -> bool:
+    return any(skip.fullmatch(endpoint) for skip in skip_endpoints)
 
 
 class OwnReceive:
@@ -36,16 +44,14 @@ class OwnReceive:
     See https://github.com/fastapi/fastapi/issues/394 for more details.
     """
 
-    def __init__(
-        self, receive: Receive, max_buffer_size: Optional[int] = None
-    ):
+    def __init__(self, receive: Receive, max_buffer_size: int | None = None):
         self.receive = receive
-        self.buffer = []
+        self.buffer: list[Message] = []
         self._complete = False
         self.max_buffer_size = max_buffer_size
         self._buffer_size = 0
 
-    async def __call__(self):
+    async def __call__(self) -> Message:
         if self._complete and self.buffer:
             return self.buffer.pop(0)
 
@@ -73,8 +79,9 @@ class OPAMiddleware:
         self,
         app: ASGIApp,
         config: OPAConfig,
-        skip_endpoints: Optional[List[str]] = None,
-        max_buffer_size: Optional[int] = None,
+        skip_endpoints: list[str] | None = None,
+        enable_authorization: bool = True,
+        max_buffer_size: int | None = None,
     ) -> None:
         if skip_endpoints is None:
             skip_endpoints = [
@@ -85,7 +92,15 @@ class OPAMiddleware:
         self.config = config
         self.app = app
         self.skip_endpoints = [re.compile(skip) for skip in skip_endpoints]
+        self.enable_authorization = enable_authorization
         self.max_buffer_size = max_buffer_size
+        if not self.enable_authorization:
+            logger.warning(
+                "OPA authorization is disabled (enable_authorization=False). "
+                "All authenticated users will have access to all endpoints. "
+                "This is appropriate for authentication-only scenarios where "
+                "authorization is handled at application level."
+            )
 
     async def __call__(
         self, scope: Scope, receive: Receive, send: Send
@@ -104,33 +119,53 @@ class OPAMiddleware:
             if should_skip_endpoint(request.url.path, self.skip_endpoints):
                 return await self.app(scope, receive, send)
 
+            # Initialize state in scope
+            if "state" not in scope:
+                scope["state"] = {}
+
             # authenticate user or get redirect to identity provider
             successful = False
-            user_info_or_auth_redirect = None
+            auth_result: RedirectResponse | AuthenticationResult | None = None
+            user_info: dict[str, object] | None = None
             for auth in self.config.authentication:
                 try:
-                    user_info_or_auth_redirect = auth.authenticate(
+                    auth_result_awaitable: Awaitable[
+                        RedirectResponse | AuthenticationResult
+                    ] = auth.authenticate(
                         request, self.config.accepted_methods
                     )
-                    if asyncio.iscoroutine(user_info_or_auth_redirect):
-                        user_info_or_auth_redirect = (
-                            await user_info_or_auth_redirect
-                        )
-                    if isinstance(user_info_or_auth_redirect, dict):
-                        successful = True
-                        break
+                    auth_result = await auth_result_awaitable
+
+                    # Handle AuthenticationResult (new style)
+                    if isinstance(auth_result, AuthenticationResult):
+                        # Store latest auth result for downstream middleware decisions
+                        scope["state"]["auth_result"] = auth_result
+                        successful = auth_result.success
+                        if successful:
+                            if auth_result.user_info:
+                                user_info = auth_result.user_info.copy()
+                            elif auth_result.validated_token:
+                                user_info = auth_result.validated_token.copy()
+                            else:
+                                logger.warning(
+                                    "Authentication handler returned success=True "
+                                    "without user_info or validated_token; "
+                                    "treating as unauthorized."
+                                )
+                                successful = False
+                            break
                 except AuthenticationException:
-                    logger.error("AuthenticationException raised on login")
+                    logger.exception("AuthenticationException raised on login")
 
             # Some authentication flows require a prior redirect to id provider
-            if isinstance(user_info_or_auth_redirect, RedirectResponse):
-                return await user_info_or_auth_redirect.__call__(
-                    scope, receive, send
-                )
-            if not successful:
+            if isinstance(auth_result, RedirectResponse):
+                return await auth_result(scope, receive, send)
+
+            if not successful or user_info is None:
                 return await self.get_unauthorized_response(
                     scope, receive, send
                 )
+
             # Check OPA decision for info provided in user_info
             # Enrich user_info if injectables are provided
             if self.config.injectables:
@@ -140,20 +175,26 @@ class OPAMiddleware:
                         request.url.path, injectable.skip_endpoints
                     ):
                         continue
-                    user_info_or_auth_redirect[
-                        injectable.key
-                    ] = await injectable.extract(request)
-            user_info_or_auth_redirect["request_method"] = scope.get("method")
-            # fmt: off
-            user_info_or_auth_redirect["request_path"] = scope.get("path").split("/")[1:]  # noqa
-            # fmt: on
-            data = {"input": user_info_or_auth_redirect}
-            opa_decision = requests.post(
-                self.config.opa_url, data=json.dumps(data), timeout=5
-            )
-            return await self.get_decision(
-                opa_decision, scope, own_receive, receive, send
-            )
+                    user_info[injectable.key] = await injectable.extract(
+                        request
+                    )
+
+            user_info["request_method"] = scope.get("method")
+            user_info["request_path"] = (scope.get("path") or "").split("/")[
+                1:
+            ]
+            data = {"input": user_info}
+
+            if self.enable_authorization:
+                opa_decision = requests.post(
+                    self.config.opa_url, data=json.dumps(data), timeout=5
+                )
+                return await self.get_decision(
+                    scope, own_receive, receive, send, opa_decision
+                )
+            scope["state"]["user_info"] = data["input"]
+            return await self.get_decision(scope, own_receive, receive, send)
+
         except ValueError as e:
             if "Request body too large" in str(e):
                 response = JSONResponse(
@@ -161,29 +202,50 @@ class OPAMiddleware:
                     content={"message": "Request body too large"},
                 )
                 return await response(scope, receive, send)
-            raise e
+            raise
 
-    def get_decision(
+    async def get_decision(
         self,
-        opa_decision,
         scope: Scope,
         own_receive: OwnReceive,
         receive: Receive,
         send: Send,
-    ):
-        is_authorized = False
-        if opa_decision.status_code != 200:
-            logger.error(f"Returned with status {opa_decision.status_code}.")
-            return self.get_unauthorized_response(scope, receive, send)
-        try:
-            is_authorized = opa_decision.json().get("result", {}).get("allow")
-        except JSONDecodeError:
-            logger.error("Unable to decode OPA response.")
-            return self.get_unauthorized_response(scope, receive, send)
-        if not is_authorized:
-            return self.get_unauthorized_response(scope, receive, send)
+        opa_decision: ResponseLike | None = None,
+    ) -> None:
+        # When authorization is disabled, allow all authenticated requests
+        if not self.enable_authorization:
+            logger.info(
+                "OPA authorization skipped (enable_authorization=False)."
+            )
+            return await self.app(scope, own_receive, send)
 
-        return self.app(scope, own_receive, send)
+        # opa_decision is guaranteed non-None when enable_authorization=True
+        if opa_decision is None:
+            raise RuntimeError(
+                "opa_decision is required when authorization is enabled"
+            )
+        # Authorization enabled - check OPA decision
+        if opa_decision.status_code != 200:
+            logger.error("Returned with status %s.", opa_decision.status_code)
+            return await self.get_forbidden_response(scope, receive, send)
+        try:
+            payload = opa_decision.json()
+        except JSONDecodeError:
+            logger.exception("Unable to decode OPA response.")
+            return await self.get_forbidden_response(scope, receive, send)
+        if not isinstance(payload, dict):
+            logger.error("OPA response is not a JSON object.")
+            return await self.get_forbidden_response(scope, receive, send)
+        result = cast(dict[str, object], payload).get("result")
+        is_authorized = (
+            cast(dict[str, object], result).get("allow")
+            if isinstance(result, dict)
+            else None
+        )
+        if is_authorized is not True:
+            return await self.get_forbidden_response(scope, receive, send)
+
+        return await self.app(scope, own_receive, send)
 
     @staticmethod
     async def get_unauthorized_response(
@@ -191,5 +253,14 @@ class OPAMiddleware:
     ) -> None:
         response = JSONResponse(
             status_code=401, content={"message": "Unauthorized"}
+        )
+        return await response(scope, receive, send)
+
+    @staticmethod
+    async def get_forbidden_response(
+        scope: Scope, receive: Receive, send: Send
+    ) -> None:
+        response = JSONResponse(
+            status_code=403, content={"message": "Forbidden"}
         )
         return await response(scope, receive, send)

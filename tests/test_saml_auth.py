@@ -1,11 +1,14 @@
+from unittest.mock import AsyncMock
 from unittest.mock import Mock
+from unittest.mock import patch
 
 import pytest
-from mock import patch
+from starlette.datastructures import FormData
 from starlette.responses import RedirectResponse
 
 from fastapi_opa.auth.auth_saml import SAMLAuthentication
 from fastapi_opa.auth.auth_saml import SAMLConfig
+from fastapi_opa.models import AuthenticationResult
 
 SESSION_INDEX = "8167416b-6a10-4a4c-889c-" + (
     "7574074e3fc5::f1eaf88b-2bb9-4d2e-8d3d-39587ba1ef37"
@@ -40,6 +43,71 @@ async def test_single_sign_on_with_parameter():
 
     assert isinstance(response, RedirectResponse)
     assert response.headers.get("location") == attr_url
+
+
+@pytest.mark.asyncio
+async def test_authenticate_passes_config_to_prepare_request():
+    saml_conf = SAMLConfig(
+        settings_directory="./tests/test_data/saml",
+        app_uri="https://public.example.com/prefix",
+    )
+    saml_auth = SAMLAuthentication(saml_conf)
+    request_mock = Mock()
+    request_mock.query_params = {"sso": ""}
+
+    saml_auth_mock = Mock()
+    saml_auth_mock.login.return_value = "http://idp.com/cryptic-stuff"
+
+    with (
+        patch.object(
+            SAMLAuthentication,
+            "prepare_request",
+            new=AsyncMock(return_value={"get_data": {}, "post_data": {}}),
+        ) as prepare_request_mock,
+        patch.object(
+            SAMLAuthentication,
+            "init_saml_auth",
+            new=AsyncMock(return_value=saml_auth_mock),
+        ),
+    ):
+        response = await saml_auth.authenticate(request_mock)
+
+    prepare_request_mock.assert_awaited_once_with(request_mock, saml_conf)
+    assert isinstance(response, RedirectResponse)
+
+
+@pytest.mark.asyncio
+async def test_single_log_out_from_idp_passes_config_to_prepare_request():
+    saml_conf = SAMLConfig(
+        settings_directory="./tests/test_data/saml",
+        app_uri="https://public.example.com/prefix",
+    )
+    saml_auth = SAMLAuthentication(saml_conf)
+    request_mock = Mock()
+    request_mock.query_params = {}
+    request_mock.session.clear = Mock()
+
+    saml_auth_mock = Mock()
+    saml_auth_mock.process_slo.return_value = None
+    saml_auth_mock.get_errors.return_value = []
+
+    with (
+        patch.object(
+            SAMLAuthentication,
+            "prepare_request",
+            new=AsyncMock(return_value={"get_data": {}, "post_data": {}}),
+        ) as prepare_request_mock,
+        patch.object(
+            SAMLAuthentication,
+            "init_saml_auth",
+            new=AsyncMock(return_value=saml_auth_mock),
+        ),
+    ):
+        response = await saml_auth.single_log_out_from_idp(request_mock)
+
+    prepare_request_mock.assert_awaited_once_with(request_mock, saml_conf)
+    assert isinstance(response, AuthenticationResult)
+    assert response.success is True
 
 
 @pytest.mark.asyncio
@@ -97,7 +165,153 @@ async def test_assertion_consumer_service(saml_util_mock):
     }
 
     request_mock.session.__setitem__.assert_called_once()
-    assert expected == response
+    assert isinstance(response, AuthenticationResult)
+    assert response.success is True
+    assert expected == response.user_info
+
+
+@pytest.mark.asyncio
+@patch("fastapi_opa.auth.auth_saml.OneLogin_Saml2_Utils")
+async def test_assertion_consumer_service_blocks_external_relay_state(
+    saml_util_mock,
+):
+    saml_util_mock.get_self_url.return_value = "http://sp.com/acs"
+    saml_conf = SAMLConfig(settings_directory="./tests/test_data/saml")
+    saml_auth = SAMLAuthentication(saml_conf)
+
+    request_mock = Mock()
+    request_mock.session.__setitem__ = Mock()
+
+    saml_auth_mock = Mock()
+    saml_auth_mock.get_errors.return_value = []
+    saml_auth_mock.get_attributes.return_value = {"Role": ["viewer"]}
+    saml_auth_mock.get_nameid.return_value = "alice"
+    saml_auth_mock.get_nameid_format.return_value = "unspecified"
+    saml_auth_mock.get_nameid_nq.return_value = None
+    saml_auth_mock.get_nameid_spnq.return_value = None
+    saml_auth_mock.get_session_index.return_value = SESSION_INDEX
+
+    response = await saml_auth.assertion_consumer_service(
+        saml_auth_mock,
+        {"post_data": {"RelayState": "http://evil.example/steal"}},
+        request_mock,
+    )
+
+    assert isinstance(response, AuthenticationResult)
+    assert response.success is True
+    saml_auth_mock.redirect_to.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch("fastapi_opa.auth.auth_saml.OneLogin_Saml2_Utils")
+async def test_assertion_consumer_service_allows_same_origin_relay_state(
+    saml_util_mock,
+):
+    saml_util_mock.get_self_url.return_value = "http://sp.com/acs"
+    saml_conf = SAMLConfig(settings_directory="./tests/test_data/saml")
+    saml_auth = SAMLAuthentication(saml_conf)
+
+    request_mock = Mock()
+    request_mock.session.__setitem__ = Mock()
+
+    saml_auth_mock = Mock()
+    saml_auth_mock.get_errors.return_value = []
+    saml_auth_mock.get_attributes.return_value = {"Role": ["viewer"]}
+    saml_auth_mock.get_nameid.return_value = "alice"
+    saml_auth_mock.get_nameid_format.return_value = "unspecified"
+    saml_auth_mock.get_nameid_nq.return_value = None
+    saml_auth_mock.get_nameid_spnq.return_value = None
+    saml_auth_mock.get_session_index.return_value = SESSION_INDEX
+    saml_auth_mock.redirect_to.side_effect = lambda url: url
+
+    response = await saml_auth.assertion_consumer_service(
+        saml_auth_mock,
+        {"post_data": {"RelayState": "http://sp.com/welcome"}},
+        request_mock,
+    )
+
+    assert isinstance(response, RedirectResponse)
+    assert response.headers["location"] == "http://sp.com/welcome"
+
+
+@pytest.mark.asyncio
+@patch("fastapi_opa.auth.auth_saml.OneLogin_Saml2_Utils")
+async def test_assertion_consumer_service_allows_same_origin_relay_state_form_data(
+    saml_util_mock,
+):
+    """FormData (Mapping, not dict) post_data should still read RelayState."""
+    saml_util_mock.get_self_url.return_value = "http://sp.com/acs"
+    saml_conf = SAMLConfig(settings_directory="./tests/test_data/saml")
+    saml_auth = SAMLAuthentication(saml_conf)
+
+    request_mock = Mock()
+    request_mock.session.__setitem__ = Mock()
+
+    saml_auth_mock = Mock()
+    saml_auth_mock.get_errors.return_value = []
+    saml_auth_mock.get_attributes.return_value = {"Role": ["viewer"]}
+    saml_auth_mock.get_nameid.return_value = "alice"
+    saml_auth_mock.get_nameid_format.return_value = "unspecified"
+    saml_auth_mock.get_nameid_nq.return_value = None
+    saml_auth_mock.get_nameid_spnq.return_value = None
+    saml_auth_mock.get_session_index.return_value = SESSION_INDEX
+    saml_auth_mock.redirect_to.side_effect = lambda url: url
+
+    form_data = FormData([("RelayState", "http://sp.com/welcome")])
+    response = await saml_auth.assertion_consumer_service(
+        saml_auth_mock,
+        {"post_data": form_data},
+        request_mock,
+    )
+
+    assert isinstance(response, RedirectResponse)
+    assert response.headers["location"] == "http://sp.com/welcome"
+
+
+@pytest.mark.asyncio
+@patch("fastapi_opa.auth.auth_saml.OneLogin_Saml2_Utils")
+async def test_assertion_consumer_service_blocks_external_relay_state_form_data(
+    saml_util_mock,
+):
+    """FormData with external RelayState should be blocked."""
+    saml_util_mock.get_self_url.return_value = "http://sp.com/acs"
+    saml_conf = SAMLConfig(settings_directory="./tests/test_data/saml")
+    saml_auth = SAMLAuthentication(saml_conf)
+
+    request_mock = Mock()
+    request_mock.session.__setitem__ = Mock()
+
+    saml_auth_mock = Mock()
+    saml_auth_mock.get_errors.return_value = []
+    saml_auth_mock.get_attributes.return_value = {"Role": ["viewer"]}
+    saml_auth_mock.get_nameid.return_value = "alice"
+    saml_auth_mock.get_nameid_format.return_value = "unspecified"
+    saml_auth_mock.get_nameid_nq.return_value = None
+    saml_auth_mock.get_nameid_spnq.return_value = None
+    saml_auth_mock.get_session_index.return_value = SESSION_INDEX
+
+    form_data = FormData([("RelayState", "http://evil.example/steal")])
+    response = await saml_auth.assertion_consumer_service(
+        saml_auth_mock,
+        {"post_data": form_data},
+        request_mock,
+    )
+
+    assert isinstance(response, AuthenticationResult)
+    assert response.success is True
+    saml_auth_mock.redirect_to.assert_not_called()
+
+
+def test_is_safe_relay_state_allows_relative_path():
+    assert SAMLAuthentication._is_safe_relay_state(
+        "/dashboard", "http://sp.com/acs"
+    )
+
+
+def test_is_safe_relay_state_blocks_javascript_scheme():
+    assert not SAMLAuthentication._is_safe_relay_state(
+        "javascript:alert(1)", "http://sp.com/acs"
+    )
 
 
 @pytest.mark.asyncio

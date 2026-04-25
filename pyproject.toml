@@ -1,57 +1,128 @@
-[build-system]
-requires = ["hatchling>=1.25"]
-build-backend = "hatchling.build"
-
 [project]
 name = "fastapi-opa"
-version = "2.0.4"
+version = "3.0.0"
 description = "FastAPI OPA middleware incl. auth flow."
 authors = [{name = "Matthias Osswald", email = "info@busykoala.io"}]
 license = {text = "GPL-3.0-or-later"}
 readme = "README.md"
-requires-python = ">=3.8,<4.0"
-keywords = ["fastapi", "oidc", "authentication", "authorization", "saml"]
+requires-python = ">=3.10,<4.0"
 dependencies = [
-    "fastapi>=0.109.2",
-    "itsdangerous",
-    "requests",
-    "PyJWT[crypto]>=2.4",
+    "cryptography>=3.3.0",
+    "fastapi>=0.113.0",
+    "pydantic>=2.8.0",
+    "requests>=2.25.0",
+    "PyJWT[crypto]>=2.1.0",
+    "starlette>=0.38.0",
+]
+keywords = [
+    "fastapi",
+    "oidc",
+    "authentication",
+    "authorization",
+    "saml",
+    "pkce",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project.optional-dependencies]
-graphql = ["graphene>=2,<3"]
-saml = ["python3-saml", "python-multipart"]
+graphql = ["graphql-core>=3.2.0"]
+saml = ["python3-saml", "python-multipart>=0.0.7"]
+authlib = ["authlib>=1.0.0"]
 
 [project.urls]
 Repository = "https://github.com/busykoala/fastapi-opa"
 
 [dependency-groups]
 dev = [
-    "Authlib",
-    "bandit",
-    "freezegun",
-    "httpx",
-    "mock",
-    "nest-asyncio",
-    "pytest",
-    "pytest-asyncio",
-    "pytest-mock",
-    "pytest-timeout>=2.3.1",
-    "ruff",
-    "setuptools>=78.1.1; python_version >= '3.9'",
-    "pysentry-rs; python_version >= '3.9'",
-    "vale>=2.20.2",
+    "bandit>=1.9.4,<2",
+    "freezegun>=1.5.5,<2",
+    "httpx>=0.28.1,<0.29",
+    "mock>=5.2.0,<6",
+    "nest-asyncio>=1.6.0,<2",
+    "pytest>=9.0.3,<10",
+    "pytest-asyncio>=1.3.0,<2",
+    "pytest-mock>=3.15.1,<4",
+    "pytest-timeout>=2.4.0,<3",
+    "ruff>=0.15.12,<0.16",
+    "setuptools>=82.0.1,<83",
+    "pysentry-rs>=0.4.5,<0.5",
+    "vale>=3.13.0.0,<4",
+    "ty>=0.0.32,<0.1",
+    "mypy>=1.20.2,<2",
 ]
 
 [tool.hatch.build]
-exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_saml.py"]
+exclude = ["fastapi_opa/example_oidc.py", "fastapi_opa/example_oidc_pkce.py", "fastapi_opa/example_saml.py"]
 
 [tool.ruff]
 line-length = 79
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "Q", "I"]
+select = ["E", "F", "W", "Q", "I", "B", "C4", "G", "PIE", "RET", "RUF", "SIM", "UP", "ANN401", "PT",]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 force-single-line = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+filterwarnings = [
+    "ignore:.*insecure.*:UserWarning",
+    "ignore:.*key.*length.*:UserWarning",
+    "ignore::jwt.warnings.InsecureKeyLengthWarning",
+]
+
+[tool.ty.rules]
+all = "error"
+
+[tool.ty.terminal]
+error-on-warning = true
+
+[tool.mypy]
+python_version = "3.13"
+files = ["fastapi_opa", "tests"]
+
+strict = true
+
+# Extra runtime-safety checks that are especially useful for None/API issues.
+warn_return_any = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+strict_equality = true
+strict_bytes = true
+
+# Make accidental Any less likely.
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_any_unimported = true
+
+# Function/API strictness.
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+
+# Optional/None safety.
+no_implicit_optional = true
+
+# Good hygiene.
+show_error_codes = true
+pretty = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "authlib.*",
+    "nest_asyncio",
+    "onelogin.*",
+    "requests",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests", "tests.*"]
+ignore_errors = true

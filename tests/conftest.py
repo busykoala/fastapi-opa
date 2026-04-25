@@ -1,7 +1,6 @@
+from collections.abc import AsyncGenerator
+from collections.abc import Callable
 from typing import Any
-from typing import AsyncGenerator
-from typing import Callable
-from typing import Dict
 
 import nest_asyncio
 import pytest
@@ -38,7 +37,7 @@ def client():
     app.add_middleware(OPAMiddleware, config=opa_config)
 
     @app.get("/")
-    async def root() -> Dict:
+    async def root() -> dict:
         return {"msg": "success"}
 
     @app.get("/items/{item_id}")
@@ -48,7 +47,7 @@ def client():
         return {"item_id": item_id}
 
     @app.options("/items/{item_id}")
-    async def read_item_options(response: Response, item_id: int) -> Dict:
+    async def read_item_options(response: Response, item_id: int) -> dict:
         if item_id not in WRITABLE_ITEMS:
             raise HTTPException(status_code=404)
         response.headers["Allow"] = "OPTIONS, GET" + (
@@ -61,11 +60,11 @@ def client():
         data = await request.json()
         return {"msg": f"Received {len(str(data))} bytes"}
 
-    yield TestClient(app)
+    return TestClient(app)
 
 
 @pytest.fixture
-def large_body() -> Callable[[], AsyncGenerator[Dict[str, Any], None]]:
+def large_body() -> Callable[[], AsyncGenerator[dict[str, Any], None]]:
     """Fixture to generate a large request body in chunks."""
 
     async def generate():
@@ -98,10 +97,10 @@ def injected_client():
     app.add_middleware(OPAMiddleware, config=opa_config)
 
     @app.post("/")
-    async def root() -> Dict:
+    async def root() -> dict:
         return {"msg": "success"}
 
-    yield TestClient(app)
+    return TestClient(app)
 
 
 @pytest.fixture
@@ -110,7 +109,7 @@ def api_key_auth():
     api_key = "1234"
     config = APIKeyConfig(header_key=header_key, api_key=api_key)
     auth = APIKeyAuthentication(config)
-    yield {"auth": auth, "header_key": header_key, "api_key": api_key}
+    return {"auth": auth, "header_key": header_key, "api_key": api_key}
 
 
 @pytest.fixture
@@ -126,7 +125,7 @@ def client_multiple_authentications(api_key_auth):
     app.add_middleware(OPAMiddleware, config=opa_config)
 
     @app.get("/")
-    async def root() -> Dict:
+    async def root() -> dict:
         return {"msg": "success"}
 
     @app.get("/items/{item_id}")
@@ -136,7 +135,7 @@ def client_multiple_authentications(api_key_auth):
         return {"item_id": item_id}
 
     @app.options("/items/{item_id}")
-    async def read_item_options(response: Response, item_id: int) -> Dict:
+    async def read_item_options(response: Response, item_id: int) -> dict:
         if item_id not in WRITABLE_ITEMS:
             raise HTTPException(status_code=404)
         response.headers["Allow"] = "OPTIONS, GET" + (
@@ -144,7 +143,7 @@ def client_multiple_authentications(api_key_auth):
         )
         return {}
 
-    yield TestClient(app)
+    return TestClient(app)
 
 
 @pytest.fixture
@@ -161,7 +160,7 @@ def gql_injected_client():
 
     @app.post("/")
     @pytest.mark.asyncio
-    async def root() -> Dict:
+    async def root() -> dict:
         return {"msg": "success"}
 
-    yield TestClient(app)
+    return TestClient(app)

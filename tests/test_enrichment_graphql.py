@@ -1,17 +1,22 @@
 import json
+from unittest.mock import patch
 
 import pytest
-from mock import patch
 
 from fastapi_opa.opa.enrichment.graphql_enrichment import GraphQLAnalysis
 from tests.test_data.graphql_queries import GQL_TEST_CASES
 
 
-@pytest.mark.parametrize("test_payload,expected", GQL_TEST_CASES)
+@pytest.mark.parametrize(("test_payload", "expected"), GQL_TEST_CASES)
 def test_query_parsing(test_payload, expected):
     gql_analysis = GraphQLAnalysis(payload=test_payload)
 
     assert expected == gql_analysis.operations
+
+
+def test_invalid_graphql_query_returns_empty_operations():
+    gql_analysis = GraphQLAnalysis(payload={"query": "invalid query !!!"})
+    assert gql_analysis.operations == []
 
 
 @pytest.mark.asyncio

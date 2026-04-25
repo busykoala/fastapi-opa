@@ -1,9 +1,9 @@
 import json
 import re
+from unittest.mock import patch
 
 import pytest
 from lxml import html
-from mock import patch
 
 from fastapi_opa import OPAConfig
 from fastapi_opa.opa.opa_middleware import should_skip_endpoint
@@ -14,7 +14,7 @@ def test_opa_config():
     authentication = AuthenticationDummy()
     opa_conf = OPAConfig(authentication, "localhost")
 
-    assert "localhost/v1/data/httpapi/authz" == opa_conf.opa_url
+    assert opa_conf.opa_url == "localhost/v1/data/httpapi/authz"
 
 
 def test_opa_url_uses_package_name():
@@ -26,8 +26,8 @@ def test_opa_url_uses_package_name():
     )
 
     assert (
-        "http://localhost:8181/v1/data/kubernetes/admission"
-        == opa_conf.opa_url
+        opa_conf.opa_url
+        == "http://localhost:8181/v1/data/kubernetes/admission"
     )
 
 
@@ -51,7 +51,7 @@ def test_successful_opa_flow(client):
 
     assert expected_url == url
     assert expected_payload == payload
-    assert {"msg": "success"} == response.json()
+    assert response.json() == {"msg": "success"}
 
 
 @pytest.mark.asyncio
@@ -75,7 +75,18 @@ async def test_not_allowing_opa_flow(client):
 
     assert expected_url == url
     assert expected_payload == payload
-    assert {"message": "Unauthorized"} == response.json()
+    assert response.json() == {"message": "Forbidden"}
+
+
+@pytest.mark.asyncio
+async def test_non_boolean_allow_value_is_rejected(client):
+    with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
+        req.return_value.status_code = 200
+        req.return_value.json = lambda: {"result": {"allow": "false"}}
+        response = client.get("/")
+
+    assert response.status_code == 403
+    assert response.json() == {"message": "Forbidden"}
 
 
 @pytest.mark.asyncio
@@ -101,20 +112,20 @@ def test_openapi_docs_endpoint_accessable(client):
     response = client.get("/docs")
     doc = html.fromstring(response.content)
     title = doc.xpath(".//title")[0].text
-    assert "FastAPI - Swagger UI" == title
+    assert title == "FastAPI - Swagger UI"
 
 
 def test_openapi_redoc_endpoint_accessable(client):
     response = client.get("/redoc")
     doc = html.fromstring(response.content)
     title = doc.xpath(".//title")[0].text
-    assert "FastAPI - ReDoc" == title
+    assert title == "FastAPI - ReDoc"
 
 
 def test_openapi_json_endpoint_accessable(client):
     response = client.get("/openapi.json")
     title = response.json()["info"]["title"]
-    assert "FastAPI" == title
+    assert title == "FastAPI"
 
 
 def test_skip_endpoints():
@@ -129,6 +140,9 @@ def test_skip_endpoints():
 
     # Test a  non match
     assert not should_skip_endpoint("/test1", skip_endpoints)
+
+    # Regression: prefix matches must not skip endpoints.
+    assert not should_skip_endpoint("/api-admin", skip_endpoints)
 
 
 def test_multiple_authentication(

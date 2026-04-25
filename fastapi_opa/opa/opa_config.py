@@ -1,8 +1,7 @@
 import re
 from abc import ABC
 from abc import abstractmethod
-from typing import List
-from typing import Optional
+from typing import TypeGuard
 
 from starlette.requests import Request
 
@@ -11,24 +10,40 @@ from fastapi_opa.auth.auth_interface import AuthInterface
 
 class Injectable(ABC):
     def __init__(
-        self, key: str, skip_endpoints: Optional[List[str]] = []
+        self, key: str, skip_endpoints: list[str] | None = None
     ) -> None:
         self.key = key
+        if skip_endpoints is None:
+            skip_endpoints = []
         self.skip_endpoints = [re.compile(skip) for skip in skip_endpoints]
 
     @abstractmethod
-    async def extract(self, request: Request) -> List:
+    async def extract(self, request: Request) -> list[object]:
         pass
+
+
+def _is_authentication_list(
+    authentication: AuthInterface | list[AuthInterface],
+) -> TypeGuard[list[AuthInterface]]:
+    return isinstance(authentication, list)
+
+
+def _as_single_authentication(
+    authentication: AuthInterface | list[AuthInterface],
+) -> AuthInterface:
+    if isinstance(authentication, list):
+        raise TypeError("Expected a single authentication handler")
+    return authentication
 
 
 class OPAConfig:
     def __init__(
         self,
-        authentication: [AuthInterface, List[AuthInterface]],
+        authentication: AuthInterface | list[AuthInterface],
         opa_host: str,
-        injectables: Optional[List[Injectable]] = None,
-        accepted_methods: Optional[List[str]] = ["id_token", "access_token"],
-        package_name: Optional[str] = "httpapi.authz",
+        injectables: list[Injectable] | None = None,
+        accepted_methods: list[str] | None = None,
+        package_name: str | None = "httpapi.authz",
     ) -> None:
         """
         Configuration container for the OPAMiddleware.
@@ -49,9 +64,17 @@ class OPAConfig:
             Name of the OPA package to be used (specified in the policy).
         """
 
-        if not isinstance(authentication, list):
-            authentication = [authentication]
-        self.authentication = authentication
+        if accepted_methods is None:
+            accepted_methods = ["id_token", "access_token"]
+
+        authentication_list: list[AuthInterface]
+        if _is_authentication_list(authentication):
+            authentication_list = authentication
+        else:
+            authentication_list = [_as_single_authentication(authentication)]
+        self.authentication = authentication_list
+        if package_name is None:
+            package_name = "httpapi.authz"
         self.opa_url = (
             f"{opa_host.rstrip('/')}/v1/data/{package_name.replace('.', '/')}"
         )
