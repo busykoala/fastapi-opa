@@ -80,8 +80,12 @@ async def test_auth_redirect_uri_from_headers(mocker):
     )
     assert params["response_type"] == ["code"]
     assert params["client_id"] == ["example-client"]
-    # Verify redirect_uri uses forwarded headers (parse_qs decodes the URL)
-    assert "https://foo.bar.ch" in params["redirect_uri"][0]
+    # Verify redirect_uri uses forwarded headers and exact callback path
+    redirect_uri = params["redirect_uri"][0]
+    parsed_redirect = urlparse(redirect_uri)
+    assert parsed_redirect.scheme == "https"
+    assert parsed_redirect.netloc == "foo.bar.ch"
+    assert parsed_redirect.path == "/test/path"
     # PKCE parameters
     assert "code_challenge" in params
     assert params["code_challenge_method"] == ["S256"]
