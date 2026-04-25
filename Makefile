@@ -5,7 +5,7 @@ UV_SYNC_FLAGS ?= --all-extras --group dev
 PIP_NO_BINARY_FIX ?= "lxml,xmlsec"
 PYSENTRY_MIN_VERSION_CHECK := python -c "import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)"
 
-.PHONY: default help qa ci-qa
+.PHONY: default help qa ci-qa qa-lowest ci-qa-lowest
 
 default: help
 
@@ -13,7 +13,9 @@ help:
 	@echo "Available targets:" \
 	; echo "  help   - show this message" \
 	; echo "  qa     - run QA with current Python" \
-	; echo "  ci-qa  - run QA across $(PYTHON_VERSIONS)"
+	; echo "  ci-qa  - run QA across $(PYTHON_VERSIONS)" \
+	; echo "  qa-lowest     - run pytest with lowest compatible direct deps" \
+	; echo "  ci-qa-lowest  - run lowest-direct pytest across $(PYTHON_VERSIONS)"
 
 qa:
 	@set -euo pipefail; \
@@ -51,4 +53,24 @@ ci-qa:
 		else \
 			echo "Skipping pysentry-rs on Python $$v (requires >=3.9)"; \
 		fi; \
+	done
+
+qa-lowest:
+	@set -euo pipefail; \
+	$(UV) venv .venv-lowest --clear; \
+	$(UV) pip install --python .venv-lowest/bin/python -r pyproject.toml --all-extras --resolution lowest-direct; \
+	$(UV) pip install --python .venv-lowest/bin/python --group dev --resolution lowest-direct; \
+	PIP_NO_BINARY=$(PIP_NO_BINARY_FIX) $(UV) pip install --python .venv-lowest/bin/python --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec; \
+	.venv-lowest/bin/python -m pytest
+
+ci-qa-lowest:
+	@set -euo pipefail; \
+	for v in $(PYTHON_VERSIONS); do \
+		echo "===> Running lowest-direct compatibility tests with Python $$v"; \
+		$(UV) python install $$v; \
+		$(UV) venv .venv-lowest-$$v --python $$v --clear; \
+		$(UV) pip install --python .venv-lowest-$$v/bin/python -r pyproject.toml --all-extras --resolution lowest-direct; \
+		$(UV) pip install --python .venv-lowest-$$v/bin/python --group dev --resolution lowest-direct; \
+		PIP_NO_BINARY=$(PIP_NO_BINARY_FIX) $(UV) pip install --python .venv-lowest-$$v/bin/python --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec; \
+		.venv-lowest-$$v/bin/python -m pytest; \
 	done

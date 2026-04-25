@@ -226,16 +226,16 @@ Also configure: `Client Scopes` -> `role_list (saml)` -> `Mappers tab` ->
 
 <a name="security-considerations"/>
 
-## Security Considerations
+## Security considerations
 
-### Token Preservation (`preserve_tokens`)
+### Token preservation (`preserve_tokens`)
 
 > **Warning**
-> The `preserve_tokens` configuration option controls whether raw tokens (`access_token`, `id_token`) are included in the `AuthenticationResult`. This has important security implications.
+> The `preserve_tokens` configuration option controls whether raw tokens (`access_token`, `id_token`) appear in the `AuthenticationResult`. This has important security implications.
 
 **Default Behavior (Secure)**
 
-By default, `preserve_tokens=False`. This means raw tokens are NOT exposed in the authentication result, following the principle of least privilege.
+By default, `preserve_tokens=False`. Raw tokens aren't exposed in the authentication result, following the principle of least privilege.
 
 ```python
 # Secure default - tokens are not preserved
@@ -249,7 +249,7 @@ oidc_config = OIDCConfig(
 
 **When to Enable Token Preservation**
 
-Set `preserve_tokens=True` only if you need access to raw tokens downstream, such as:
+Set `preserve_tokens=True` when you need access to raw tokens downstream, such as:
 - Using `CookieAuthMiddleware` which needs tokens to store in cookies
 - Passing tokens to downstream services
 - Custom token inspection requirements
@@ -268,9 +268,9 @@ oidc_config = OIDCConfig(
 
 When enabled, be aware of these risks:
 
-1. **Token Leakage via Logs**: If you log the `AuthenticationResult`, tokens will appear in logs
-2. **XSS Attacks**: If cookies are configured without `httponly=True`, JavaScript can steal tokens
-3. **Network Interception**: If cookies are configured without `secure=True`, tokens can be intercepted over HTTP
+1. **Token leakage via logs**: Logging the `AuthenticationResult` exposes tokens in logs
+2. **XSS attacks**: Without `httponly=True` on cookies, JavaScript can steal tokens
+3. **Network interception**: Without `secure=True` on cookies, tokens travel over plain HTTP
 
 **Recommended Cookie Configuration**
 
@@ -281,22 +281,22 @@ from fastapi_opa.models import TokenCookieConfig
 
 cookie_config = TokenCookieConfig(
     cookie_name="access_token",
-    cookie_secure=True,      # HTTPS only - prevents interception
-    cookie_httponly=True,    # No JavaScript access - prevents XSS
+    cookie_secure=True,      # HTTPS only — prevents network interception
+    cookie_httponly=True,    # No JavaScript access — prevents XSS
     cookie_samesite="lax",   # CSRF protection
 )
 ```
 
-A security warning will be logged when `preserve_tokens=True` to remind you of these considerations.
+A security warning appears in the log when `preserve_tokens=True` to remind you of these considerations.
 
-### Authorization Control (`enable_authorization`)
+### Authorization control (`enable_authorization`)
 
 > **Warning**
-> The `enable_authorization` parameter controls whether OPA policy checks are performed. Disabling it removes all authorization controls.
+> The `enable_authorization` parameter controls whether OPA policy checks run. Setting it to `False` removes all authorization controls.
 
 **Default Behavior (Secure)**
 
-By default, `enable_authorization=True`. This means OPA is consulted for every request to enforce your authorization policies.
+By default, `enable_authorization=True`. OPA evaluates every request against your authorization policies.
 
 ```python
 # Secure default - OPA authorization enabled
@@ -309,15 +309,15 @@ app.add_middleware(
 
 **When to Disable Authorization**
 
-Set `enable_authorization=False` in these scenarios:
+Set `enable_authorization=False` for these scenarios:
 
-1. **Authentication-only applications**: When you only need to verify user identity without enforcing endpoint-level permissions. In this case, any authenticated user can access all endpoints, and authorization logic (if needed) is handled within your application code.
+1. **Authentication without authorization**: When you need to verify user identity without enforcing endpoint-level permissions. Any authenticated user can access all endpoints, and your app handles authorization logic directly.
 
 2. **Development/Testing**: When developing locally without OPA running, or testing the authentication flow in isolation.
 
 ```python
 # Authentication only - no OPA policy enforcement
-# Useful when authorization is handled at application level
+# Useful when the app handles authorization directly
 # or when all authenticated users should have equal access
 app.add_middleware(
     CookieAuthMiddleware,
@@ -328,14 +328,14 @@ app.add_middleware(
 
 **Security Considerations When `enable_authorization=False`**
 
-When authorization is disabled:
+When authorization is off:
 - **Authentication still works**: Users must still authenticate via OIDC/SAML
-- **No OPA policy checks**: Endpoint access is not controlled by OPA policies
+- **No OPA policy checks**: OPA policies don't control endpoint access
 - **Equal access**: All authenticated users have the same access level
 
-If your application requires role-based access control or fine-grained permissions, keep `enable_authorization=True` and define appropriate OPA policies.
+If your app requires role-based access control or fine-grained permissions, keep `enable_authorization=True` and define appropriate OPA policies.
 
-A security warning will be logged when `enable_authorization=False` to ensure this is an intentional choice.
+A security warning appears in the log when `enable_authorization=False` to ensure this is an intentional choice.
 
 <a name="custom-payload-enrichment"/>
 

@@ -8,8 +8,8 @@ from urllib.parse import urlparse
 import jwt
 import pytest
 from authlib.jose import JsonWebKey
-from cryptography.hazmat.primitives._serialization import Encoding
-from cryptography.hazmat.primitives._serialization import PublicFormat
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.hazmat.primitives.serialization import PublicFormat
 from freezegun import freeze_time
 from starlette.datastructures import URL
 from starlette.datastructures import Headers

@@ -2,17 +2,15 @@ import logging
 from dataclasses import dataclass
 from json import JSONDecodeError
 
-from graphql import GraphQLCoreBackend
-from graphql import GraphQLField
-from graphql import GraphQLObjectType
-from graphql import GraphQLSchema
-from graphql import GraphQLString
-from graphql.language.ast import ListType
-from graphql.language.ast import NamedType
-from graphql.language.ast import NonNullType
-from graphql.language.ast import OperationDefinition
-from graphql.language.ast import SelectionSet
-from graphql.language.ast import VariableDefinition
+from graphql import parse
+from graphql.language.ast import FieldNode
+from graphql.language.ast import ListTypeNode
+from graphql.language.ast import NamedTypeNode
+from graphql.language.ast import NonNullTypeNode
+from graphql.language.ast import OperationDefinitionNode
+from graphql.language.ast import SelectionSetNode
+from graphql.language.ast import TypeNode
+from graphql.language.ast import VariableDefinitionNode
 from starlette.requests import Request
 
 from fastapi_opa.opa.opa_config import Injectable
@@ -29,12 +27,6 @@ class OperationData:
 
 
 class GraphQLAnalysis:
-    type = GraphQLObjectType(
-        "Type", lambda: {"type": GraphQLField(GraphQLString)}
-    )
-    schema = GraphQLSchema(type)
-    backend = GraphQLCoreBackend()
-
     def __init__(self, payload: dict[str, object] | None) -> None:
         self.operations: list[OperationData] = []
         operation_defs = self.get_operation_defs(payload)
@@ -44,7 +36,7 @@ class GraphQLAnalysis:
                     name=(
                         operation_def.name.value if operation_def.name else ""
                     ),
-                    operation=operation_def.operation,
+                    operation=operation_def.operation.value,
                     variables=self.extract_variables(
                         operation_def.variable_definitions
                     ),
@@ -56,37 +48,37 @@ class GraphQLAnalysis:
 
     def get_operation_defs(
         self, payload: dict[str, object] | None
-    ) -> list[OperationDefinition]:
+    ) -> list[OperationDefinitionNode]:
         if payload is None:
             return []
         gql_query = payload.get("query")
         if not isinstance(gql_query, str):
             return []
-        doc = self.backend.document_from_string(
-            schema=self.schema, document_string=gql_query
-        )
-        definitions = doc.document_ast.definitions
+        doc = parse(gql_query)
+        definitions = doc.definitions
         return [
             definition
             for definition in definitions
-            if isinstance(definition, OperationDefinition)
+            if isinstance(definition, OperationDefinitionNode)
         ]
 
     def extract_selection_set(
         self,
-        selection_set: SelectionSet | tuple[object, ...] | None,
+        selection_set: SelectionSetNode | None,
         result: list[object],
     ) -> list[object]:
-        if isinstance(selection_set, SelectionSet):
+        if isinstance(selection_set, SelectionSetNode):
             result_part: list[object] = []
             for field in selection_set.selections:
+                if not isinstance(field, FieldNode):
+                    continue
                 result_part.append(field.name.value)
                 self.extract_selection_set(field.selection_set, result_part)
             result.append(result_part)
         return result
 
     def extract_variables(
-        self, variable_definitions: list[VariableDefinition] | None
+        self, variable_definitions: tuple[VariableDefinitionNode, ...] | None
     ) -> dict[str, str]:
         variables: dict[str, str] = {}
         if not variable_definitions:
@@ -99,13 +91,15 @@ class GraphQLAnalysis:
 
     def deep_extract_type(
         self,
-        item_type: ListType | NamedType | NonNullType,
+        item_type: TypeNode,
         type_str: str = "{}",
     ) -> str:
-        if isinstance(item_type, ListType):
+        if isinstance(item_type, ListTypeNode):
             return self.deep_extract_type(item_type.type, "[{}]")
-        if isinstance(item_type, NonNullType):
+        if isinstance(item_type, NonNullTypeNode):
             return self.deep_extract_type(item_type.type, type_str)
+        if not isinstance(item_type, NamedTypeNode):
+            raise TypeError("Unsupported GraphQL type node")
         return type_str.format(item_type.name.value)
 
 
