@@ -300,6 +300,9 @@ async def test_assertion_consumer_service_blocks_external_relay_state_form_data(
     assert isinstance(response, AuthenticationResult)
     assert response.success is True
     saml_auth_mock.redirect_to.assert_not_called()
+
+
+def test_is_safe_relay_state_allows_relative_path():
     assert SAMLAuthentication._is_safe_relay_state(
         "/dashboard", "http://sp.com/acs"
     )
