@@ -3,6 +3,7 @@ from unittest.mock import Mock
 from unittest.mock import patch
 
 import pytest
+from starlette.datastructures import FormData
 from starlette.responses import RedirectResponse
 
 from fastapi_opa.auth.auth_saml import SAMLAuthentication
@@ -233,7 +234,72 @@ async def test_assertion_consumer_service_allows_same_origin_relay_state(
     assert response.headers["location"] == "http://sp.com/welcome"
 
 
-def test_is_safe_relay_state_allows_relative_path():
+@pytest.mark.asyncio
+@patch("fastapi_opa.auth.auth_saml.OneLogin_Saml2_Utils")
+async def test_assertion_consumer_service_allows_same_origin_relay_state_form_data(
+    saml_util_mock,
+):
+    """FormData (Mapping, not dict) post_data should still read RelayState."""
+    saml_util_mock.get_self_url.return_value = "http://sp.com/acs"
+    saml_conf = SAMLConfig(settings_directory="./tests/test_data/saml")
+    saml_auth = SAMLAuthentication(saml_conf)
+
+    request_mock = Mock()
+    request_mock.session.__setitem__ = Mock()
+
+    saml_auth_mock = Mock()
+    saml_auth_mock.get_errors.return_value = []
+    saml_auth_mock.get_attributes.return_value = {"Role": ["viewer"]}
+    saml_auth_mock.get_nameid.return_value = "alice"
+    saml_auth_mock.get_nameid_format.return_value = "unspecified"
+    saml_auth_mock.get_nameid_nq.return_value = None
+    saml_auth_mock.get_nameid_spnq.return_value = None
+    saml_auth_mock.get_session_index.return_value = SESSION_INDEX
+    saml_auth_mock.redirect_to.side_effect = lambda url: url
+
+    form_data = FormData([("RelayState", "http://sp.com/welcome")])
+    response = await saml_auth.assertion_consumer_service(
+        saml_auth_mock,
+        {"post_data": form_data},
+        request_mock,
+    )
+
+    assert isinstance(response, RedirectResponse)
+    assert response.headers["location"] == "http://sp.com/welcome"
+
+
+@pytest.mark.asyncio
+@patch("fastapi_opa.auth.auth_saml.OneLogin_Saml2_Utils")
+async def test_assertion_consumer_service_blocks_external_relay_state_form_data(
+    saml_util_mock,
+):
+    """FormData with external RelayState should be blocked."""
+    saml_util_mock.get_self_url.return_value = "http://sp.com/acs"
+    saml_conf = SAMLConfig(settings_directory="./tests/test_data/saml")
+    saml_auth = SAMLAuthentication(saml_conf)
+
+    request_mock = Mock()
+    request_mock.session.__setitem__ = Mock()
+
+    saml_auth_mock = Mock()
+    saml_auth_mock.get_errors.return_value = []
+    saml_auth_mock.get_attributes.return_value = {"Role": ["viewer"]}
+    saml_auth_mock.get_nameid.return_value = "alice"
+    saml_auth_mock.get_nameid_format.return_value = "unspecified"
+    saml_auth_mock.get_nameid_nq.return_value = None
+    saml_auth_mock.get_nameid_spnq.return_value = None
+    saml_auth_mock.get_session_index.return_value = SESSION_INDEX
+
+    form_data = FormData([("RelayState", "http://evil.example/steal")])
+    response = await saml_auth.assertion_consumer_service(
+        saml_auth_mock,
+        {"post_data": form_data},
+        request_mock,
+    )
+
+    assert isinstance(response, AuthenticationResult)
+    assert response.success is True
+    saml_auth_mock.redirect_to.assert_not_called()
     assert SAMLAuthentication._is_safe_relay_state(
         "/dashboard", "http://sp.com/acs"
     )

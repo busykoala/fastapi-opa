@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Callable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -266,8 +267,8 @@ class SAMLAuthentication(AuthInterface):
         self_url = OneLogin_Saml2_Utils.get_self_url(request_args)
         post_data = request_args.get("post_data", {})
         relay_state: str | None = None
-        if isinstance(post_data, dict):
-            relay_state_value = cast(dict[str, object], post_data).get(
+        if isinstance(post_data, Mapping):
+            relay_state_value = cast(Mapping[str, object], post_data).get(
                 "RelayState"
             )
             if isinstance(relay_state_value, str):
