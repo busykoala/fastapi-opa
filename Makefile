@@ -22,6 +22,7 @@ qa:
 	$(UV) run ruff check; \
 	$(UV) run ruff format --check; \
 	$(UV) run ty check; \
+	$(UV) run mypy; \
 	$(UV) run vale README.md CONTRIBUTING.md; \
 	$(UV) run pytest; \
 	$(UV) run bandit -r fastapi_opa --exclude="fastapi_opa/example_oidc.py,fastapi_opa/example_saml.py"; \
@@ -41,6 +42,7 @@ ci-qa:
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v ruff check; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v ruff format --check; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v ty check; \
+		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v mypy; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v vale README.md CONTRIBUTING.md; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v pytest; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v bandit -r fastapi_opa --exclude="fastapi_opa/example_oidc.py,fastapi_opa/example_saml.py"; \

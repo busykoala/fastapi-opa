@@ -32,6 +32,7 @@ jobs:
         run: |
           uv run --python ${{ matrix.python-version }} ruff check
           uv run --python ${{ matrix.python-version }} ruff format --check
+          uv run --python ${{ matrix.python-version }} mypy
           uv run --python ${{ matrix.python-version }} vale README.md CONTRIBUTING.md
       - name: Test with pytest
         run: |

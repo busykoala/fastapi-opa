@@ -83,7 +83,7 @@ error-on-warning = true
 
 [tool.mypy]
 python_version = "3.13"
-packages = ["fastapi_opa"]
+files = ["fastapi_opa", "tests"]
 
 strict = true
 
@@ -117,7 +117,12 @@ warn_unused_configs = true
 [[tool.mypy.overrides]]
 module = [
     "authlib.*",
+    "nest_asyncio",
     "onelogin.*",
     "requests",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests", "tests.*"]
+ignore_errors = true

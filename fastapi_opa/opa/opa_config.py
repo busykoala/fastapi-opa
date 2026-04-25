@@ -1,7 +1,7 @@
 import re
 from abc import ABC
 from abc import abstractmethod
-from typing import cast
+from typing import TypeGuard
 
 from starlette.requests import Request
 
@@ -20,6 +20,20 @@ class Injectable(ABC):
     @abstractmethod
     async def extract(self, request: Request) -> list[object]:
         pass
+
+
+def _is_authentication_list(
+    authentication: AuthInterface | list[AuthInterface],
+) -> TypeGuard[list[AuthInterface]]:
+    return isinstance(authentication, list)
+
+
+def _as_single_authentication(
+    authentication: AuthInterface | list[AuthInterface],
+) -> AuthInterface:
+    if isinstance(authentication, list):
+        raise TypeError("Expected a single authentication handler")
+    return authentication
 
 
 class OPAConfig:
@@ -54,10 +68,10 @@ class OPAConfig:
             accepted_methods = ["id_token", "access_token"]
 
         authentication_list: list[AuthInterface]
-        if isinstance(authentication, list):
-            authentication_list = cast(list[AuthInterface], authentication)
+        if _is_authentication_list(authentication):
+            authentication_list = authentication
         else:
-            authentication_list = [authentication]
+            authentication_list = [_as_single_authentication(authentication)]
         self.authentication = authentication_list
         if package_name is None:
             package_name = "httpapi.authz"
