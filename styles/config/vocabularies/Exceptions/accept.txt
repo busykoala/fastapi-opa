@@ -42,3 +42,4 @@ SPA
 SSO
 TTL
 subclassing
+boolean
