@@ -190,6 +190,8 @@ class OIDCAuthentication(AuthInterface):
         )
         self._fallback_callback_uris: Dict[str, str] = {}
         self._fallback_callback_uris_lock = threading.Lock()
+        self._nonce_by_state: Dict[str, str] = {}
+        self._nonce_by_state_lock = threading.Lock()
         if self.config.well_known_endpoint:
             self.set_from_well_known()
         elif (
@@ -241,6 +243,14 @@ class OIDCAuthentication(AuthInterface):
         self._pkce_store.store(state, code_verifier)
         with self._fallback_callback_uris_lock:
             self._fallback_callback_uris[state] = callback_uri
+
+    def _store_nonce(self, state: str, nonce: str) -> None:
+        with self._nonce_by_state_lock:
+            self._nonce_by_state[state] = nonce
+
+    def _retrieve_nonce(self, state: str) -> Optional[str]:
+        with self._nonce_by_state_lock:
+            return self._nonce_by_state.pop(state, None)
 
     def _retrieve_pkce_request_data(
         self, state: str
@@ -370,6 +380,7 @@ class OIDCAuthentication(AuthInterface):
                     raise OIDCException(
                         "Invalid or missing state parameter for PKCE"
                     )
+                expected_nonce = self._retrieve_nonce(state) if state else None
 
                 token_callback_uri = (
                     request_data.callback_uri
@@ -397,6 +408,11 @@ class OIDCAuthentication(AuthInterface):
                     raise OIDCException
 
                 validated_token = self.obtain_validated_token(alg, id_token)
+
+                if expected_nonce is not None:
+                    token_nonce = validated_token.get("nonce")
+                    if token_nonce != expected_nonce:
+                        raise OIDCException("OIDC nonce mismatch")
 
                 # Check both global config and per-request context variable
                 # The context variable allows thread-safe per-request override
@@ -487,6 +503,7 @@ class OIDCAuthentication(AuthInterface):
             state: The state parameter to correlate request/response
         """
         generated_code_verifier = None
+        nonce = generate_token(32)
         if code_challenge is None or state is None:
             generated_code_verifier, generated_code_challenge = (
                 self._generate_pkce_pair()
@@ -500,6 +517,8 @@ class OIDCAuthentication(AuthInterface):
                 generated_code_verifier,
                 callback_uri,
             )
+        if state is not None:
+            self._store_nonce(state, nonce)
 
         # Build params dict - urlencode will handle proper encoding
         params = {
@@ -509,6 +528,7 @@ class OIDCAuthentication(AuthInterface):
             "redirect_uri": callback_uri,  # urlencode handles encoding
             "code_challenge": code_challenge,
             "code_challenge_method": self.config.code_challenge_method,
+            "nonce": nonce,
         }
         if state:
             params["state"] = state
@@ -525,6 +545,7 @@ class OIDCAuthentication(AuthInterface):
                     self.config.client_secret,
                     algorithms=["HS256"],
                     audience=self.config.client_id,
+                    issuer=self.issuer,
                 )
             except InvalidTokenError:
                 logger.error("An error occurred while decoding the id_token")
@@ -547,6 +568,7 @@ class OIDCAuthentication(AuthInterface):
                     key=public_key,
                     algorithms=["RS256"],
                     audience=self.config.client_id,
+                    issuer=self.issuer,
                 )
             except InvalidTokenError:
                 logger.error("An error occurred while decoding the id_token")

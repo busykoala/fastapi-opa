@@ -1,5 +1,6 @@
 """PKCE Store abstraction for secure PKCE request storage."""
 
+import json
 import logging
 import threading
 import time
@@ -23,6 +24,7 @@ class PKCERequestData:
 
     code_verifier: str
     callback_uri: str
+    nonce: Optional[str] = None
 
 
 @runtime_checkable
@@ -112,7 +114,11 @@ class InMemoryPKCEStore:
             self._store[state] = (code_verifier, time.time())
 
     def store_request_data(
-        self, state: str, code_verifier: str, callback_uri: str
+        self,
+        state: str,
+        code_verifier: str,
+        callback_uri: str,
+        nonce: Optional[str] = None,
     ) -> None:
         """Store full PKCE request data.
 
@@ -121,7 +127,7 @@ class InMemoryPKCEStore:
         """
         self.store(
             state,
-            self._serialize_request_data(code_verifier, callback_uri),
+            self._serialize_request_data(code_verifier, callback_uri, nonce),
         )
 
     def retrieve(self, state: str) -> Optional[str]:
@@ -182,18 +188,39 @@ class InMemoryPKCEStore:
             return len(self._store)
 
     @staticmethod
-    def _serialize_request_data(code_verifier: str, callback_uri: str) -> str:
-        return f"{code_verifier}\n{callback_uri}"
+    def _serialize_request_data(
+        code_verifier: str, callback_uri: str, nonce: Optional[str] = None
+    ) -> str:
+        return json.dumps(
+            {
+                "code_verifier": code_verifier,
+                "callback_uri": callback_uri,
+                "nonce": nonce,
+            }
+        )
 
     @staticmethod
     def _deserialize_request_data(entry: str) -> PKCERequestData:
+        try:
+            parsed = json.loads(entry)
+            if isinstance(parsed, dict) and "code_verifier" in parsed:
+                return PKCERequestData(
+                    code_verifier=parsed.get("code_verifier", ""),
+                    callback_uri=parsed.get("callback_uri", ""),
+                    nonce=parsed.get("nonce"),
+                )
+        except json.JSONDecodeError:
+            pass
+
         code_verifier, separator, callback_uri = entry.partition("\n")
         if not separator:
             return PKCERequestData(
                 code_verifier=entry,
                 callback_uri="",
+                nonce=None,
             )
         return PKCERequestData(
             code_verifier=code_verifier,
             callback_uri=callback_uri,
+            nonce=None,
         )

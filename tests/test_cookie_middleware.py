@@ -646,7 +646,12 @@ class TestASGIProtocolCompliance:
             "type": "http",
             "path": "/test",
             "headers": [(b"cookie", b"access_token=expired_token")],
-            "state": {},
+            "state": {
+                "auth_result": AuthenticationResult(
+                    success=False,
+                    error="token expired",
+                )
+            },
         }
 
         # Mock handle_token_expired to track it was called
@@ -844,75 +849,82 @@ class TestASGIProtocolCompliance:
         assert sent_messages[1]["body"] == b"Unauthorized"
 
     @pytest.mark.asyncio
-    async def test_handle_token_expired_with_missing_auth_config(self, caplog):
+    async def test_401_with_cookie_and_successful_auth_not_hijacked(self):
         """
-        DEFENSIVE FIX: handle_token_expired should not crash if
-        authentication config is missing or incomplete.
+        A cookie-backed request that is authenticated but unauthorized
+        must not be treated as an expired-token reauthentication case.
         """
         from unittest.mock import AsyncMock
-        from unittest.mock import MagicMock
 
+        from fastapi_opa import OPAConfig
         from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
 
-        # Create a minimal config without proper authentication
-        mock_config = MagicMock()
-        mock_config.authentication = []  # Empty list
-
+        opa_host = "http://localhost:8181"
+        auth = AuthenticationDummy()
+        opa_config = OPAConfig(authentication=auth, opa_host=opa_host)
         cookie_config = TokenCookieConfig()
 
-        # Create middleware with mocked config
-        middleware = CookieAuthMiddleware.__new__(CookieAuthMiddleware)
-        middleware.config = mock_config
-        middleware.cookie_config = cookie_config
+        app = AsyncMock()
+        middleware = CookieAuthMiddleware(
+            app=app,
+            config=opa_config,
+            cookie_config=cookie_config,
+        )
 
         sent_messages = []
 
         async def track_send(message):
             sent_messages.append(message)
 
-        scope = {"type": "http", "path": "/test"}
+        scope = {
+            "type": "http",
+            "path": "/test",
+            "headers": [(b"cookie", b"access_token=valid_token")],
+            "state": {
+                "auth_result": AuthenticationResult(
+                    success=True,
+                    user_info={"sub": "user"},
+                )
+            },
+        }
 
-        import logging
-
-        with caplog.at_level(logging.WARNING):
-            await middleware.handle_token_expired(
-                scope, AsyncMock(), track_send
+        # Simulate app returning 401 due to authorization denial
+        async def mock_app(scope, receive, send):
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 401,
+                    "headers": [],
+                }
+            )
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": b"Unauthorized",
+                }
             )
 
-        # Should have logged a warning about missing config
-        assert "No authentication configured" in caplog.text
+        middleware.opa = mock_app
 
-        # Should still send a redirect (to fallback "/")
-        assert len(sent_messages) >= 1
-        start_msg = next(
-            (m for m in sent_messages if m["type"] == "http.response.start"),
-            None,
-        )
-        assert start_msg is not None
-        assert start_msg["status"] == 303
+        await middleware(scope, AsyncMock(), track_send)
+
+        assert len(sent_messages) == 2
+        assert sent_messages[0]["status"] == 401
+        assert sent_messages[1]["body"] == b"Unauthorized"
 
     @pytest.mark.asyncio
-    async def test_handle_token_expired_with_missing_authorization_endpoint(
-        self, caplog
-    ):
+    async def test_handle_token_expired_redirects_to_same_path(self):
         """
-        DEFENSIVE FIX: handle_token_expired should handle auth config
-        that lacks authorization_endpoint attribute.
+        Expired token flow should clear cookie and redirect to the same path
+        to restart the normal authentication flow safely.
         """
         from unittest.mock import AsyncMock
-        from unittest.mock import MagicMock
 
         from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
-
-        # Create config with auth that lacks authorization_endpoint
-        mock_auth = MagicMock(spec=[])  # No attributes
-        mock_config = MagicMock()
-        mock_config.authentication = [mock_auth]
 
         cookie_config = TokenCookieConfig()
 
         middleware = CookieAuthMiddleware.__new__(CookieAuthMiddleware)
-        middleware.config = mock_config
         middleware.cookie_config = cookie_config
 
         sent_messages = []
@@ -920,22 +932,109 @@ class TestASGIProtocolCompliance:
         async def track_send(message):
             sent_messages.append(message)
 
-        scope = {"type": "http", "path": "/test"}
+        scope = {
+            "type": "http",
+            "path": "/test/path",
+            "query_string": b"a=1&b=2",
+        }
 
-        import logging
+        await middleware.handle_token_expired(scope, AsyncMock(), track_send)
 
-        with caplog.at_level(logging.WARNING):
-            await middleware.handle_token_expired(
-                scope, AsyncMock(), track_send
-            )
-
-        # Should have logged a warning
-        assert "missing authorization_endpoint" in caplog.text
-
-        # Should still send a redirect to fallback
         start_msg = next(
             (m for m in sent_messages if m["type"] == "http.response.start"),
             None,
         )
         assert start_msg is not None
         assert start_msg["status"] == 303
+        headers = dict(start_msg["headers"])
+        assert headers[b"location"] == b"/test/path?a=1&b=2"
+
+    @pytest.mark.asyncio
+    async def test_401_with_cookie_and_non_token_error_not_hijacked(self):
+        """
+        Cookie 401 handling must not hijack responses for non-token failures.
+        """
+        from unittest.mock import AsyncMock
+
+        from fastapi_opa import OPAConfig
+        from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
+
+        opa_host = "http://localhost:8181"
+        auth = AuthenticationDummy()
+        opa_config = OPAConfig(authentication=auth, opa_host=opa_host)
+        cookie_config = TokenCookieConfig()
+
+        app = AsyncMock()
+        middleware = CookieAuthMiddleware(
+            app=app,
+            config=opa_config,
+            cookie_config=cookie_config,
+        )
+
+        sent_messages = []
+
+        async def track_send(message):
+            sent_messages.append(message)
+
+        scope = {
+            "type": "http",
+            "path": "/test",
+            "headers": [(b"cookie", b"access_token=valid_token")],
+            "state": {
+                "auth_result": AuthenticationResult(
+                    success=False,
+                    error="policy denied",
+                )
+            },
+        }
+
+        async def mock_app(scope, receive, send):
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 401,
+                    "headers": [],
+                }
+            )
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": b"Unauthorized",
+                }
+            )
+
+        middleware.opa = mock_app
+
+        await middleware(scope, AsyncMock(), track_send)
+
+        assert len(sent_messages) == 2
+        assert sent_messages[0]["status"] == 401
+        assert sent_messages[1]["body"] == b"Unauthorized"
+
+    def test_debug_logs_do_not_include_token_fragments(self, caplog):
+        """Token values must not appear in debug logs."""
+        import logging
+
+        opa_host = "http://localhost:8181"
+        auth = AuthenticationDummy()
+        opa_config = OPAConfig(authentication=auth, opa_host=opa_host)
+        cookie_config = TokenCookieConfig()
+
+        app = FastAPI()
+        middleware = CookieAuthMiddleware(
+            app=app,
+            config=opa_config,
+            cookie_config=cookie_config,
+        )
+
+        secret_token = "supersecret-token-1234567890"
+        headers = []
+        cookie_headers = [(b"cookie", f"access_token={secret_token}".encode())]
+
+        with caplog.at_level(logging.DEBUG):
+            middleware._create_cookie_header(secret_token)
+            middleware._extract_token_from_cookie(cookie_headers)
+            middleware._add_auth_header(headers, secret_token)
+
+        assert secret_token not in caplog.text
+        assert secret_token[:10] not in caplog.text

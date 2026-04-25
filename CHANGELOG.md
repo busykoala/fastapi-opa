@@ -8,6 +8,10 @@
 - Add a devcontainer and Makefile for reproducible local development.
 - Bump packages
 - Drop Python 3.8 and 3.9 support
+- Security hardening: block unsafe SAML RelayState redirects (prevent open redirect)
+- Security hardening: enforce OIDC issuer claim validation for HS256 and RS256 tokens
+- Security hardening: only trigger cookie re-auth flow on explicit authentication/token failures instead of all HTTP 401 responses
+- Security hardening: stop logging token fragments in cookie middleware debug logs
 
 ## [2.0.4] - 2025-12-15
 - Add support for PKCE in OIDC scenario with optional cookie-based bearer token.

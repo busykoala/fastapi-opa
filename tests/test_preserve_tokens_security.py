@@ -108,6 +108,7 @@ class TestTokenExposureWithPreserveTokensTrue:
         token_payload = {
             "sub": "user123",
             "aud": "test-client",
+            "iss": "http://keycloak.busykoala.ch/auth/realms/example-realm",
             "iat": int(iat),
             "exp": int(iat + 3600),
             "email": "user@example.com",  # PII
@@ -182,6 +183,7 @@ class TestTokenExposureWithPreserveTokensTrue:
         token_payload = {
             "sub": "user123",
             "aud": "test-client",
+            "iss": "http://keycloak.busykoala.ch/auth/realms/example-realm",
             "iat": int(iat),
             "exp": int(iat + 3600),
         }
@@ -298,6 +300,7 @@ class TestTokenLeakageScenarios:
             {
                 "sub": "user123",
                 "aud": "test-client",
+                "iss": "http://keycloak.busykoala.ch/auth/realms/example-realm",
                 "iat": int(iat),
                 "exp": int(iat + 3600),
             },
@@ -359,6 +362,7 @@ class TestTokenLeakageScenarios:
             {
                 "sub": "user123",
                 "aud": "test-client",
+                "iss": "http://keycloak.busykoala.ch/auth/realms/example-realm",
                 "iat": int(iat),
                 "exp": int(iat + 3600),
             },

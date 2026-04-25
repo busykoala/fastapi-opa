@@ -3,7 +3,9 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict
+from typing import Optional
 from typing import Union
+from urllib.parse import urlparse
 
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
@@ -115,6 +117,24 @@ class SAMLAuthentication(AuthInterface):
         return RedirectResponse(redirect_url, status_code=303)
 
     @staticmethod
+    def _is_safe_relay_state(relay_state: str, self_url: str) -> bool:
+        """Allow only relative URLs or absolute URLs on the same origin."""
+        if not relay_state:
+            return False
+
+        relay = urlparse(relay_state)
+        if not relay.scheme and not relay.netloc:
+            return relay_state.startswith("/")
+
+        if relay.scheme not in {"http", "https"}:
+            return False
+
+        current = urlparse(self_url)
+        return (
+            relay.scheme == current.scheme and relay.netloc == current.netloc
+        )
+
+    @staticmethod
     async def assertion_consumer_service(
         auth: OneLogin_Saml2_Auth, request_args: Dict, request: Request
     ) -> Union[RedirectResponse, AuthenticationResult]:
@@ -133,14 +153,19 @@ class SAMLAuthentication(AuthInterface):
         request.session["saml_session"] = json.dumps(userdata)
 
         self_url = OneLogin_Saml2_Utils.get_self_url(request_args)
-        if "RelayState" in request_args.get("post_data") and self_url.rstrip(
-            "/"
-        ) != request_args.get("post_data", {}).get("RelayState").rstrip("/"):
-            return RedirectResponse(
-                auth.redirect_to(
-                    request_args.get("post_data", {}).get("RelayState")
-                ),
-                status_code=303,
+        post_data = request_args.get("post_data", {})
+        relay_state: Optional[str] = None
+        if isinstance(post_data, dict):
+            relay_state = post_data.get("RelayState")
+        if relay_state and self_url.rstrip("/") != relay_state.rstrip("/"):
+            if SAMLAuthentication._is_safe_relay_state(relay_state, self_url):
+                return RedirectResponse(
+                    auth.redirect_to(relay_state),
+                    status_code=303,
+                )
+
+            logger.warning(
+                "Blocked unsafe RelayState redirect target during ACS flow"
             )
 
         return AuthenticationResult(success=True, user_info=userdata)

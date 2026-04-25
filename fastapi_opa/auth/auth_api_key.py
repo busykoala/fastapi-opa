@@ -1,3 +1,4 @@
+import hmac
 import logging
 from dataclasses import dataclass
 from typing import List
@@ -25,10 +26,10 @@ class APIKeyAuthentication(AuthInterface):
     async def authenticate(
         self,
         request: Request,
-        accepted_methods: Optional[List[str]] = [],
+        accepted_methods: Optional[List[str]] = None,
     ) -> AuthenticationResult:
         key = request.headers.get(self.config.header_key, None)
-        if key is None or key != self.config.api_key:
+        if key is None or not hmac.compare_digest(key, self.config.api_key):
             raise AuthenticationException("Unauthorized")
         return AuthenticationResult(
             success=True,

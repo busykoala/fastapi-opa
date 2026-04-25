@@ -72,7 +72,7 @@ class CookieAuthMiddleware:
                     f"SameSite={self.cookie_config.cookie_samesite}"
                 )
 
-            logger.debug(f"Creating cookie header for token: {token[:10]}...")
+            logger.debug("Creating cookie header for token")
 
         return b"set-cookie", "; ".join(cookie_parts).encode("latin-1")
 
@@ -113,7 +113,7 @@ class CookieAuthMiddleware:
                 for cookie in cookies:
                     if cookie.startswith(f"{self.cookie_config.cookie_name}="):
                         token = cookie.split("=", 1)[1]
-                        logger.debug(f"Found token in cookie: {token[:10]}...")
+                        logger.debug("Found token in cookie")
                         return token
 
         logger.debug("No token found in cookies")
@@ -125,32 +125,42 @@ class CookieAuthMiddleware:
         """Add authorization header"""
         if not any(name.lower() == b"authorization" for name, _ in headers):
             headers.append((b"authorization", f"Bearer {token}".encode()))
-            logger.debug(
-                f"Added Authorization header with token: {token[:10]}..."
-            )
+            logger.debug("Added Authorization header")
+
+    @staticmethod
+    def _should_handle_expired_token(
+        scope: Scope, cookie_token: Optional[str]
+    ) -> bool:
+        """Handle cookie re-auth only for explicit authentication failures."""
+        if not cookie_token:
+            return False
+
+        auth_result = scope.get("state", {}).get("auth_result")
+        if not isinstance(auth_result, AuthenticationResult):
+            return False
+        if auth_result.success:
+            return False
+
+        error = (auth_result.error or "").lower()
+        indicators = ["token", "expired", "invalid", "jwt", "unauthorized"]
+        return any(indicator in error for indicator in indicators)
 
     async def handle_token_expired(
         self, scope: Scope, receive: Receive, send: Send
     ) -> None:
         """Handle expired token by redirecting to authentication"""
-        logger.info("Handling expired token - redirecting to authentication")
+        logger.info(
+            "Handling expired token - redirecting to request path to restart auth flow"
+        )
 
-        # Safely get authorization endpoint with defensive checks
-        redirect_url = "/"  # Fallback URL
-        auth_list = getattr(self.config, "authentication", None)
-        if auth_list and len(auth_list) > 0:
-            first_auth = auth_list[0]
-            if hasattr(first_auth, "authorization_endpoint"):
-                redirect_url = first_auth.authorization_endpoint
-            else:
-                logger.warning(
-                    "Authentication config missing authorization_endpoint, "
-                    "using fallback redirect to '/'"
-                )
+        # Redirect to the same path/query with the cookie removed.
+        # The subsequent request goes through the normal auth flow (PKCE/state).
+        path = scope.get("path") or "/"
+        query_string = scope.get("query_string", b"")
+        if query_string:
+            redirect_url = f"{path}?{query_string.decode('latin-1')}"
         else:
-            logger.warning(
-                "No authentication configured, using fallback redirect to '/'"
-            )
+            redirect_url = path
 
         # Create response with cookie removal
         response = RedirectResponse(
@@ -218,7 +228,9 @@ class CookieAuthMiddleware:
                 status = message.get("status", 200)
 
                 # Handle 401 (expired/invalid token)
-                if status == 401 and cookie_token:
+                if status == 401 and self._should_handle_expired_token(
+                    scope, cookie_token
+                ):
                     logger.warning("Token in cookie is invalid or expired")
                     response_hijacked = True  # Mark that we're taking over
                     await self.handle_token_expired(scope, receive, send)

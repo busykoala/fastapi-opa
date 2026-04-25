@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 def should_skip_endpoint(endpoint: str, skip_endpoints: List[Pattern]) -> bool:
     for skip in skip_endpoints:
-        if skip.match(endpoint):
+        if skip.fullmatch(endpoint):
             return True
     return False
 
@@ -132,10 +132,10 @@ class OPAMiddleware:
 
                     # Handle AuthenticationResult (new style)
                     if isinstance(auth_result, AuthenticationResult):
+                        # Store latest auth result for downstream middleware decisions
+                        scope["state"]["auth_result"] = auth_result
                         successful = auth_result.success
                         if successful:
-                            # Store auth_result in scope for cookie middleware
-                            scope["state"]["auth_result"] = auth_result
                             # Extract user info from the result
                             user_info = auth_result.model_dump()
                             if auth_result.user_info:

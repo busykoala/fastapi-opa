@@ -130,6 +130,9 @@ def test_skip_endpoints():
     # Test a  non match
     assert not should_skip_endpoint("/test1", skip_endpoints)
 
+    # Regression: prefix matches must not skip endpoints.
+    assert not should_skip_endpoint("/api-admin", skip_endpoints)
+
 
 def test_multiple_authentication(
     api_key_auth, client_multiple_authentications

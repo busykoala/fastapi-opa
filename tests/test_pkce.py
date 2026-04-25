@@ -386,6 +386,7 @@ class TestPreserveTokensOption:
         token_payload = {
             "sub": "user123",
             "aud": "test-client",
+            "iss": "http://keycloak.busykoala.ch/auth/realms/example-realm",
             "iat": int(iat),
             "exp": int(iat + 3600),
         }
@@ -445,6 +446,7 @@ class TestPreserveTokensOption:
         token_payload = {
             "sub": "user123",
             "aud": "test-client",
+            "iss": "http://keycloak.busykoala.ch/auth/realms/example-realm",
             "iat": int(iat),
             "exp": int(iat + 3600),
         }
@@ -643,12 +645,15 @@ class TestPKCESecurityRequirements:
         params = parse_qs(parsed.query)
         code_challenge_from_redirect = params["code_challenge"][0]
         state_from_redirect = params["state"][0]
+        nonce_from_redirect = params["nonce"][0]
 
         # Step 2: Simulate callback with code and state - capture code_verifier
         iat = datetime.datetime.now().timestamp()
         token_payload = {
             "sub": "user123",
             "aud": "test-client",
+            "iss": "http://keycloak.busykoala.ch/auth/realms/example-realm",
+            "nonce": nonce_from_redirect,
             "iat": int(iat),
             "exp": int(iat + 3600),
         }

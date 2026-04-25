@@ -50,6 +50,7 @@ def test_auth_redirect_uri(mocker):
     # PKCE parameters
     assert "code_challenge" in params
     assert params["code_challenge_method"] == ["S256"]
+    assert "nonce" in params
 
 
 @pytest.mark.asyncio
@@ -89,6 +90,7 @@ async def test_auth_redirect_uri_from_headers(mocker):
     # PKCE parameters
     assert "code_challenge" in params
     assert params["code_challenge_method"] == ["S256"]
+    assert "nonce" in params
 
 
 def test_get_auth_token(mocker):
@@ -198,6 +200,126 @@ def test_validate_sub_matching(mocker):
         assert not oidc.validate_sub_matching(sub_1, sub_2)
 
 
+def test_get_validated_token_rejects_wrong_issuer(mocker):
+    wrong_issuer_payload = {
+        "name": "John Doe",
+        "aud": "example-client",
+        "iss": "http://evil-issuer.example",
+        "sub": "test-sub",
+        "iat": int(datetime.datetime.now().timestamp()),
+        "exp": int(datetime.datetime.now().timestamp() + 3600),
+    }
+    hs265_token = jwt.encode(wrong_issuer_payload, "secret", algorithm="HS256")
+
+    mocker.patch(
+        "fastapi_opa.auth.auth_oidc.requests.get",
+        return_value=oidc_well_known_response(),
+    )
+    config = oidc_config()
+    oidc = OIDCAuthentication(config)
+
+    with pytest.raises(OIDCException):
+        oidc.obtain_validated_token("HS256", hs265_token)
+
+
+@pytest.mark.asyncio
+async def test_authenticate_rejects_nonce_mismatch(mocker):
+    mocker.patch(
+        "fastapi_opa.auth.auth_oidc.requests.get",
+        return_value=oidc_well_known_response(),
+    )
+    config = oidc_config()
+    oidc = OIDCAuthentication(config)
+
+    request_initial = Mock()
+    request_initial.headers = {}
+    request_initial.query_params = {}
+    request_initial.url = Mock(
+        scheme="http", netloc="app.example.com", path="/callback"
+    )
+
+    redirect_response = await oidc.authenticate(request_initial)
+    parsed = urlparse(redirect_response.headers["location"])
+    params = parse_qs(parsed.query)
+    state_from_redirect = params["state"][0]
+
+    iat = int(datetime.datetime.now().timestamp())
+    id_token = jwt.encode(
+        {
+            "sub": "user123",
+            "aud": "example-client",
+            "iss": "http://keycloak.busykoala.ch/auth/realms/example-realm",
+            "nonce": "wrong-nonce",
+            "iat": iat,
+            "exp": iat + 3600,
+        },
+        "secret",
+        algorithm="HS256",
+    )
+
+    mocker.patch(
+        "fastapi_opa.auth.auth_oidc.requests.post",
+        return_value=mock_response(
+            200, {"access_token": "token", "id_token": id_token}
+        ),
+    )
+
+    request_callback = Mock()
+    request_callback.headers = {}
+    request_callback.query_params = {
+        "code": "auth_code_from_idp",
+        "state": state_from_redirect,
+    }
+    request_callback.url = Mock(
+        scheme="http", netloc="app.example.com", path="/callback"
+    )
+
+    result = await oidc.authenticate(request_callback)
+    assert result.success is False
+    assert "nonce mismatch" in result.error
+
+
+def test_hs256_decode_includes_issuer_argument(mocker):
+    mocker.patch(
+        "fastapi_opa.auth.auth_oidc.requests.get",
+        return_value=oidc_well_known_response(),
+    )
+    decode_mock = mocker.patch(
+        "fastapi_opa.auth.auth_oidc.jwt.decode",
+        return_value={"sub": "test-sub"},
+    )
+
+    config = oidc_config()
+    oidc = OIDCAuthentication(config)
+    oidc.obtain_validated_token("HS256", "dummy-token")
+
+    assert decode_mock.call_args.kwargs["issuer"] == oidc.issuer
+
+
+def test_rs256_decode_includes_issuer_argument(mocker):
+    mocker.patch(
+        "fastapi_opa.auth.auth_oidc.requests.get",
+        side_effect=[
+            oidc_well_known_response(),
+            mock_response(200, {"keys": []}),
+        ],
+    )
+    mocker.patch(
+        "fastapi_opa.auth.auth_oidc.OIDCAuthentication.extract_token_key",
+        return_value="public-key",
+    )
+    decode_mock = mocker.patch(
+        "fastapi_opa.auth.auth_oidc.jwt.decode",
+        return_value={"sub": "test-sub"},
+    )
+
+    config = oidc_config()
+    oidc = OIDCAuthentication(config)
+    oidc.obtain_validated_token("RS256", "dummy-token")
+
+    assert decode_mock.call_args.kwargs["issuer"] == oidc.issuer
+
+
 def construct_jwt(
     algorithm: str,
     private_key: str = "",
@@ -211,6 +333,7 @@ def construct_jwt(
         msg = {
             "name": "John Doe",
             "aud": "example-client",
+            "iss": "http://keycloak.busykoala.ch/auth/realms/example-realm",
             "jti": "68f7cf57-110d-4cbf-9f29-0f5ad4c90328",
             "sub": "test-sub",
             "iat": int(iat_timestamp),
