@@ -34,8 +34,23 @@ Before opening a pull request, run `make ci-qa` to sync dependencies with uv and
 
 ## Documentation
 
-Document the package within `README.md`.
-Hands-on examples and detailed explanations go into the wiki.
+Document the package within `README.md`. Keep it as a concise reference.
+
+Hands-on guides and detailed explanations go in `docs/`:
+
+**Introduction**
+- [`docs/getting-started.md`](docs/getting-started.md)—local setup with Keycloak and OPA
+
+**Open Policy Agent**
+- [`docs/opa.md`](docs/opa.md)—OPA input format, policy examples, `OPAConfig` reference
+- [`docs/token-enrichment.md`](docs/token-enrichment.md)—custom and GraphQL injectables
+
+**Authentication**
+- [`docs/authentication.md`](docs/authentication.md)—API key, OIDC, SAML, custom handlers
+- [`docs/cookie-auth.md`](docs/cookie-auth.md)—cookie-based session management
+- [`docs/pkce.md`](docs/pkce.md)—PKCE for public clients and multi-process stores
+
+Add a new Markdown file under `docs/` for each new feature area, and link it from `README.md`.
 
 Limit docstrings to places in the code where they help to understand what goes
 on. Other than that critical endpoints use type hinting. Define interfaces for

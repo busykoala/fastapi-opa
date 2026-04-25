@@ -25,7 +25,7 @@ qa:
 	$(UV) run ruff format --check; \
 	$(UV) run ty check; \
 	$(UV) run mypy; \
-	$(UV) run vale README.md CONTRIBUTING.md; \
+	$(UV) run vale README.md CONTRIBUTING.md docs; \
 	$(UV) run pytest; \
 	$(UV) run bandit -r fastapi_opa --exclude="fastapi_opa/example_oidc.py,fastapi_opa/example_saml.py"; \
 	if $(UV) run $(PYSENTRY_MIN_VERSION_CHECK); then \
@@ -45,7 +45,7 @@ ci-qa:
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v ruff format --check; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v ty check; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v mypy; \
-		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v vale README.md CONTRIBUTING.md; \
+		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v vale README.md CONTRIBUTING.md docs; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v pytest; \
 		UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v bandit -r fastapi_opa --exclude="fastapi_opa/example_oidc.py,fastapi_opa/example_saml.py"; \
 		if UV_PROJECT_ENVIRONMENT=.venv-$$v $(UV) run --python $$v $(PYSENTRY_MIN_VERSION_CHECK); then \

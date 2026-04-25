@@ -1,21 +1,141 @@
 # Open Policy Agent (OPA) middleware for FastAPI
 
 ## Table of contents
-- [Contributors](#contributors)
-- [What does FastAPI-OPA do](#about)
+
+- [About](#about)
 - [Installation](#installation)
-- [How to get started](#getting-started)
-- [Open Policy Agent](#opa)
-- [Authentication flow](#auth-flow)
-  - [API key authentication](#api-key-auth)
-  - [OIDC authentication](#oidc-auth)
-  - [SAML authentication](#saml-auth)
-- [Security Considerations](#security-considerations)
-- [Custom payload enrichment](#custom-payload-enrichment)
-  - [GraphQL enrichment](#gql-enrichment)
+- [Quick start](#getting-started)
+- [Documentation](#documentation)
 - [Development](#development)
+- [Contributors](#contributors)
+
+<a name="about"/>
+
+## About
+
+`fastapi-opa` adds authentication and authorization middleware to FastAPI. It handles
+the login flow with an identity provider, validates the returned token, and forwards
+the user's claims to [Open Policy Agent](https://www.openpolicyagent.org/) for
+policy-based access control.
+
+![Flow Diagram](https://raw.githubusercontent.com/busykoala/fastapi-opa/master/assets/diagram.png)
+
+Every request passes through the middleware. Unauthenticated requests redirect to the
+identity provider. Once OPA validates the token, it evaluates the request against your
+policy and either allows or rejects it with a 403.
+
+<a name="installation"/>
+
+## Installation
+
+```bash
+uv add fastapi-opa
+```
+
+Optional extras:
+
+| Extra | Adds |
+|-------|------|
+| `graphql` | `GraphQLInjectable` for GraphQL payload enrichment |
+| `saml` | SAML 2.0 authentication support |
+| `authlib` | Authlib-backed PKCE token generation (stdlib fallback used otherwise) |
+
+```bash
+uv add "fastapi-opa[graphql,saml]"
+```
+
+For SAML, you may need to install the binary dependencies without wheels:
+
+```bash
+PIP_NO_BINARY="lxml,xmlsec" uv run pip install --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec
+```
+
+<a name="getting-started"/>
+
+## Quick start
+
+:bulb: see [docs/getting-started.md](docs/getting-started.md) for a complete local
+setup with Keycloak and OPA, including Docker Compose configuration and a working
+policy.
+
+Add the middleware to your FastAPI app:
+
+```python
+from fastapi import FastAPI
+
+from fastapi_opa import OPAConfig
+from fastapi_opa.auth import OIDCAuthentication
+from fastapi_opa.auth import OIDCConfig
+from fastapi_opa.models import TokenCookieConfig
+from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
+
+oidc_config = OIDCConfig(
+    well_known_endpoint="https://idp.example.com/realms/myrealm/.well-known/openid-configuration",
+    app_uri="https://app.example.com",
+    client_id="my-client",
+    client_secret="my-secret",
+    preserve_tokens=True,  # required for CookieAuthMiddleware
+)
+oidc_auth = OIDCAuthentication(oidc_config)
+opa_config = OPAConfig(authentication=oidc_auth, opa_host="http://localhost:8181")
+
+app = FastAPI()
+app.add_middleware(
+    CookieAuthMiddleware,
+    config=opa_config,
+    cookie_config=TokenCookieConfig(cookie_secure=True),
+)
+
+
+@app.get("/finance/salary/{name}")
+async def salary(name: str) -> dict[str, str]:
+    return {"msg": "success", "name": name}
+```
+
+<a name="documentation"/>
+
+## Documentation
+
+### Introduction and tutorials
+
+| Doc | Description |
+|-----|-------------|
+| [docs/getting-started.md](docs/getting-started.md) | Full local setup with Keycloak and OPA: Docker Compose, Rego policy, Keycloak configuration |
+
+### Open Policy Agent
+
+| Doc | Description |
+|-----|-------------|
+| [docs/opa.md](docs/opa.md) | OPA input format, policy examples, `OPAConfig` reference, skipping endpoints, body buffering |
+| [docs/token-enrichment.md](docs/token-enrichment.md) | Custom injectables and GraphQL enrichment to add extra fields to the OPA input |
+
+### Authentication
+
+| Doc | Description |
+|-----|-------------|
+| [docs/authentication.md](docs/authentication.md) | All authentication methods: API key, OIDC (full configuration reference), SAML, custom handlers |
+| [docs/cookie-auth.md](docs/cookie-auth.md) | Cookie-based sessions with `CookieAuthMiddleware`: flow, `TokenCookieConfig` options, security checklist |
+| [docs/pkce.md](docs/pkce.md) | Public clients and PKCE: setup, `PKCEStoreProtocol`, example Redis store for multi-process deployments |
+
+<a name="development"/>
 
 ## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide. In brief:
+
+```bash
+# Install all dev dependencies
+uv sync
+
+# Full QA pipeline: lint, type check, tests, security scan
+make qa
+
+# Tests only
+uv run pytest
+
+# Tests against the lowest allowed dependency versions
+make qa-lowest
+```
 
 <a name="contributors"/>
 
@@ -23,353 +143,4 @@
 
 Thanks to all the contributors below. Furthermore thanks for raising issues.
 
-<a href="https://github.com/morestanna">
-  <img src="https://avatars.githubusercontent.com/morestanna" width="60" height="60" />
-</a>
-<a href="https://github.com/busykoala">
-  <img src="https://avatars.githubusercontent.com/busykoala" width="60" height="60" />
-</a>
-<a href="https://github.com/TracyWR">
-  <img src="https://avatars.githubusercontent.com/TracyWR" width="60" height="60" />
-</a>
-<a href="https://github.com/loikki">
-  <img src="https://avatars.githubusercontent.com/loikki" width="60" height="60" />
-</a>
-<a href="https://github.com/ejsyx">
-  <img src="https://avatars.githubusercontent.com/ejsyx" width="60" height="60" />
-</a>
-<a href="https://github.com/JimFawkes">
-  <img src="https://avatars.githubusercontent.com/JimFawkes" width="60" height="60" />
-</a>
-<a href="https://github.com/DiamondJoseph">
-  <img src="https://avatars.githubusercontent.com/DiamondJoseph" width="60" height="60" />
-</a>
-<a href="https://github.com/miceg">
-  <img src="https://avatars.githubusercontent.com/miceg" width="60" height="60" />
-</a>
-<a href="https://github.com/JulianSprung">
-  <img src="https://avatars.githubusercontent.com/JulianSprung" width="60" height="60" />
-</a>
-
-<a name="about"/>
-
-## What does FastAPI-OPA do
-
-The FastAPI extension `fastapi-opa` adds login flows and integrates Open Policy
-Agent with your app.
-
-![Flow Diagram](https://raw.githubusercontent.com/busykoala/fastapi-opa/master/assets/diagram.png)
-
-The middleware redirects each request to the identity provider and then
-validates the returned token. Open Policy Agent uses that token to decide
-whether the response succeeds or fails.
-
-<a name="installation"/>
-
-## Installation
-
-```bash
-uv add fastapi-opa --extra graphql --extra saml
-
-# install these dependencies without binary wheels when needed
-PIP_NO_BINARY="lxml,xmlsec" uv run pip install --force-reinstall --no-binary=lxml --no-binary=xmlsec lxml xmlsec
-```
-
-<a name="getting-started"/>
-
-## How to get started
-
-:bulb: checkout the wiki for an environment setup with Keycloak and Open Policy Agent:  
-[Getting Started with FastAPI app with Authentication and Authorization](https://github.com/busykoala/fastapi-opa/wiki#dev-setup)
-
-The package combines authentication and authorization with FastAPI. You can
-customize the `OPAMiddleware` depending on your authentication flow.
-
-Check out these examples for the most common flows:
-- OIDC: `fastapi_opa.example_oidc.py`
-- SAML: `fastapi_opa.example_saml.py`
-
-## Open Policy Agent
-
-The middleware sends the validated and authenticated user token to Open
-Policy Agent. It adds the extra attributes `request_method` and
-`request_path`.
-
-```json
-{
-    "input": {
-        "exp": 1617466243,
-        "iat": 1617465943,
-        "auth_time": 1617465663,
-        "jti": "9aacb638-70c6-4f0a-b0c8-dbc67f92e3d1",
-        "iss": "http://localhost:8080/auth/realms/example-realm",
-        "aud": "example-client",
-        "sub": "ccf78dc0-e1d6-4606-99d4-9009e74e3ab4",
-        "typ": "ID",
-        "azp": "david",
-        "session_state": "41640fe7-39d2-44bc-818c-a3360b36fb87",
-        "at_hash": "2IGw-B9f5910Sll1tnfQRg",
-        "acr": "0",
-        "email_verified": false,
-        "hr": "true",
-        "preferred_username": "david",
-        "user": "david",
-        "subordinates": [],
-        "request_method": "GET",
-        "request_path": ["finance", "salary", "david"]
-    }
-}
-```
-
-In Open Policy Agent you can create policies using user roles,
-routes, request methods etc.
-
-An example policy (from [the official Open Policy Agent
-docs](https://www.openpolicyagent.org/docs/v0.11.0/http-api-authorization/))
-for this setup could look like this:
-
-```rego
-package httpapi.authz
-
-# bob is alice's manager, and betty is charlie's.
-subordinates = {"alice": [], "charlie": [], "bob": ["alice"], "betty": ["charlie"]}
-
-# HTTP API request
-import input
-
-default allow = false
-
-# Allow users to get their own salaries.
-allow {
-  some username
-  input.request_method == "GET"
-  input.request_path = ["finance", "salary", username]
-  input.user == username
-}
-
-# Allow managers to get their subordinates' salaries.
-allow {
-  some username
-  input.request_method == "GET"
-  input.request_path = ["finance", "salary", username]
-  subordinates[input.user][_] == username
-}
-```
-
-<a name="auth-flow"/>
-
-## Authentication flow
-
-Use the provided interface to set up your desired authentication flow. Then
-insert it into `OPAMiddleware` (`fastapi_opa.auth.auth_interface.AuthInterface`).
-Consider submitting a pull request with new flows.
-
-You can also use these ready-to-go implementations:
-
-<a name="api-key-auth"/>
-
-### API key authentication
-
-In the API key authentication a request header needs to match a given value.
-
-```python
-# Configure API keys
-api_key_config = APIKeyConfig(
-    header_key="test",
-    api_key="1234"
-)
-api_key_auth = APIKeyAuthentication(api_key_config)
-```
-
-In the example the header `header["test"] = "1234"` authenticates the request.
-For Open Policy Agent, set user to `APIKey` and the variable `client` to the
-client address.
-
-<a name="oidc-auth"/>
-
-### OIDC authentication
-
-The example in [How to get started](#getting-started) provides an example for
-the implementation of the OIDC Authentication.
-
-<a name="saml-auth"/>
-
-### SAML authentication
-
-For the SAML implementation create your certs using
-`openssl req -new -x509 -days 3652 -nodes -out sp.crt -keyout sp.key` and
-add the keys to the sp section of your `settings.json`. Checkout the test
-settings to get an idea (`tests/test_data/saml/*.json`).
-Provide the path to your own `settings.json` and `advanced_settings.json`
-in the `SAMLAuthConfig` like in the example below (don't use the test data in
-production).
-
-```python
-from fastapi_opa import OPAConfig
-from fastapi_opa.auth.auth_saml import SAMLAuthentication
-from fastapi_opa.auth.auth_saml import SAMLConfig
-
-opa_host = "http://localhost:8181"
-
-saml_config = SAMLConfig(settings_directory="./tests/test_data/saml")
-saml_auth = SAMLAuthentication(saml_config)
-
-opa_config = OPAConfig(authentication=saml_auth, opa_host=opa_host,
-                       accepted_methods=["id_token", "access_token"])
-```
-
-Upload the certificate to your identity provider. Using Keycloak as an
-identity provider you need to configure `encrypt assertion`,
-`client signature required`, `force POST bindings` on creating the client.
-Also configure: `Client Scopes` -> `role_list (saml)` -> `Mappers tab` ->
-`role list` -> `Single Role Attribute`
-
-<a name="security-considerations"/>
-
-## Security considerations
-
-### Token preservation (`preserve_tokens`)
-
-> **Warning**
-> The `preserve_tokens` configuration option controls whether raw tokens (`access_token`, `id_token`) appear in the `AuthenticationResult`. This has important security implications.
-
-**Default Behavior (Secure)**
-
-By default, `preserve_tokens=False`. Raw tokens aren't exposed in the authentication result, following the principle of least privilege.
-
-```python
-# Secure default - tokens are not preserved
-oidc_config = OIDCConfig(
-    well_known_endpoint="...",
-    client_id="my-client",
-    client_secret="my-secret",
-    # preserve_tokens defaults to False
-)
-```
-
-**When to Enable Token Preservation**
-
-Set `preserve_tokens=True` when you need access to raw tokens downstream, such as:
-- Using `CookieAuthMiddleware` which needs tokens to store in cookies
-- Passing tokens to downstream services
-- Custom token inspection requirements
-
-```python
-# Explicit opt-in when tokens are needed
-oidc_config = OIDCConfig(
-    well_known_endpoint="...",
-    client_id="my-client",
-    client_secret="my-secret",
-    preserve_tokens=True,  # Explicit opt-in
-)
-```
-
-**Security Risks When `preserve_tokens=True`**
-
-When enabled, be aware of these risks:
-
-1. **Token leakage via logs**: Logging the `AuthenticationResult` exposes tokens in logs
-2. **XSS attacks**: Without `httponly=True` on cookies, JavaScript can steal tokens
-3. **Network interception**: Without `secure=True` on cookies, tokens travel over plain HTTP
-
-**Recommended Cookie Configuration**
-
-When using `preserve_tokens=True` with `CookieAuthMiddleware`, always use secure cookie settings:
-
-```python
-from fastapi_opa.models import TokenCookieConfig
-
-cookie_config = TokenCookieConfig(
-    cookie_name="access_token",
-    cookie_secure=True,      # HTTPS only — prevents network interception
-    cookie_httponly=True,    # No JavaScript access — prevents XSS
-    cookie_samesite="lax",   # CSRF protection
-)
-```
-
-A security warning appears in the log when `preserve_tokens=True` to remind you of these considerations.
-
-### Authorization control (`enable_authorization`)
-
-> **Warning**
-> The `enable_authorization` parameter controls whether OPA policy checks run. Setting it to `False` removes all authorization controls.
-
-**Default Behavior (Secure)**
-
-By default, `enable_authorization=True`. OPA evaluates every request against your authorization policies.
-
-```python
-# Secure default - OPA authorization enabled
-app.add_middleware(
-    CookieAuthMiddleware,
-    config=opa_config,
-    # enable_authorization defaults to True
-)
-```
-
-**When to Disable Authorization**
-
-Set `enable_authorization=False` for these scenarios:
-
-1. **Authentication without authorization**: When you need to verify user identity without enforcing endpoint-level permissions. Any authenticated user can access all endpoints, and your app handles authorization logic directly.
-
-2. **Development/Testing**: When developing locally without OPA running, or testing the authentication flow in isolation.
-
-```python
-# Authentication only - no OPA policy enforcement
-# Useful when the app handles authorization directly
-# or when all authenticated users should have equal access
-app.add_middleware(
-    CookieAuthMiddleware,
-    config=opa_config,
-    enable_authorization=False,
-)
-```
-
-**Security Considerations When `enable_authorization=False`**
-
-When authorization is off:
-- **Authentication still works**: Users must still authenticate via OIDC/SAML
-- **No OPA policy checks**: OPA policies don't control endpoint access
-- **Equal access**: All authenticated users have the same access level
-
-If your app requires role-based access control or fine-grained permissions, keep `enable_authorization=True` and define appropriate OPA policies.
-
-A security warning appears in the log when `enable_authorization=False` to ensure this is an intentional choice.
-
-<a name="custom-payload-enrichment"/>
-
-## Custom payload enrichment
-
-Use the interface `fastapi_opa.opa.opa_config.Injectable` to add
-more information to the payload sent to Open Policy Agent.
-
-Configure the injectables in the `OPAConfig`:
-
-```python
-class FancyInjectable(Injectable):
-    async def extract(self, request: Request) -> List:
-        return ["some", "custom", "stuff"]
-
-fancy_inj = FancyInjectable("fancy_key", skip_endpoints=["/health", "/api/[^/]*/test])
-
-opa_config = OPAConfig(
-    authentication=oidc_auth, opa_host=opa_host, injectables=[fancy_inj]
-)
-```
-
-Use `skip_endpoints` to choose which endpoints the injectable shouldn't affect.
-To define an endpoint, specify an exact string or a regular expression.
-
-<a name="gql-enrichment"/>
-
-### GraphQL enrichment
-
-For GraphQL you can use the ready to go injectable:
-
-```python
-from fastapi_opa.opa.enrichment.graphql_enrichment import GraphQLInjectable`
-
-graphql = GraphQLInjectable("gql_injectable")
-opa_config = OPAConfig(authentication=oidc_auth, opa_host=opa_host, injectables=[graphql])
-```
+<a href="https://github.com/morestanna"><img src="https://avatars.githubusercontent.com/morestanna" width="60" height="60" /></a><a href="https://github.com/busykoala"><img src="https://avatars.githubusercontent.com/busykoala" width="60" height="60" /></a><a href="https://github.com/TracyWR"><img src="https://avatars.githubusercontent.com/TracyWR" width="60" height="60" /></a><a href="https://github.com/loikki"><img src="https://avatars.githubusercontent.com/loikki" width="60" height="60" /></a><a href="https://github.com/ejsyx"><img src="https://avatars.githubusercontent.com/ejsyx" width="60" height="60" /></a><a href="https://github.com/JimFawkes"><img src="https://avatars.githubusercontent.com/JimFawkes" width="60" height="60" /></a><a href="https://github.com/DiamondJoseph"><img src="https://avatars.githubusercontent.com/DiamondJoseph" width="60" height="60" /></a><a href="https://github.com/miceg"><img src="https://avatars.githubusercontent.com/miceg" width="60" height="60" /></a><a href="https://github.com/JulianSprung"><img src="https://avatars.githubusercontent.com/JulianSprung" width="60" height="60" /></a><a href="https://github.com/francbartoli"><img src="https://avatars.githubusercontent.com/francbartoli" width="60" height="60" /></a>
