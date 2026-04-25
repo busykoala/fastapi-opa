@@ -20,8 +20,9 @@ async def test_key_api_auth(api_key_auth):
 
     # Do a successful test
     answer = await auth.authenticate(fake_request)
-    assert answer["user"] == "APIKey"
-    assert answer["client"] == host
+    assert answer.success is True
+    assert answer.user_info["user"] == "APIKey"
+    assert answer.user_info["client"] == host
 
     # Do a failure due to wrong key
     with pytest.raises(AuthenticationException):

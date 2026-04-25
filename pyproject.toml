@@ -5,11 +5,11 @@ description = "FastAPI OPA middleware incl. auth flow."
 authors = [{name = "Matthias Osswald", email = "info@busykoala.io"}]
 license = {text = "GPL-3.0-or-later"}
 readme = "README.md"
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.10,<4.0"
 dependencies = [
     "fastapi>=0.109.2",
     "itsdangerous",
-    "requests",
+    "requests>=2.33.0",
     "PyJWT[crypto]>=2.4",
     "urllib3>=2.6.3",
     "starlette>=0.47.2",
@@ -29,7 +29,7 @@ build-backend = "hatchling.build"
 
 [project.optional-dependencies]
 graphql = ["graphene>=2,<3"]
-saml = ["python3-saml", "python-multipart"]
+saml = ["python3-saml", "python-multipart>=0.0.26"]
 authlib = ["authlib>=1.6.9,<2.0.0"]
 
 [project.urls]
@@ -42,7 +42,7 @@ dev = [
     "httpx",
     "mock",
     "nest-asyncio",
-    "pytest",
+    "pytest>=9.0.3",
     "pytest-asyncio",
     "pytest-mock",
     "pytest-timeout>=2.3.1",

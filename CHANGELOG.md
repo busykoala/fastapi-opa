@@ -1,12 +1,13 @@
 # Change Log
 
-## [3.0.0] - 2025-12-28
+## [3.0.0] - 2026-04-25
 - Switch project tooling from Poetry to uv for dependency management and QA workflows.
 - PKCE support with per-request code_verifier/code_challenge generation following RFC 7636
 - Cookie-based middleware for storing and managing bearer tokens in cookies
 - New AuthenticationResult model for structured authentication responses replacing raw dictionaries
 - Add a devcontainer and Makefile for reproducible local development.
 - Bump packages
+- Drop Python 3.8 and 3.9 support
 
 ## [2.0.4] - 2025-12-15
 - Add support for PKCE in OIDC scenario with optional cookie-based bearer token.

@@ -12,6 +12,7 @@ from starlette.responses import RedirectResponse
 
 from fastapi_opa.auth.auth_interface import AuthInterface
 from fastapi_opa.auth.exceptions import SAMLException
+from fastapi_opa.models import AuthenticationResult
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class SAMLAuthentication(AuthInterface):
 
     async def authenticate(
         self, request: Request
-    ) -> Union[RedirectResponse, Dict]:
+    ) -> Union[RedirectResponse, AuthenticationResult]:
         request_args = await self.prepare_request(request)
         auth = await self.init_saml_auth(request_args)
 
@@ -64,7 +65,7 @@ class SAMLAuthentication(AuthInterface):
 
     async def single_log_out_from_idp(
         self, request: Request
-    ) -> Union[RedirectResponse, Dict]:
+    ) -> Union[RedirectResponse, AuthenticationResult]:
         req_args = await self.prepare_request(request)
         if not req_args["get_data"].get("SAMLResponse") and (
             request.query_params.get("SAMLResponse")
@@ -80,9 +81,13 @@ class SAMLAuthentication(AuthInterface):
             if url is not None:
                 return RedirectResponse(url)
             else:
-                return {"success_slo": True}
+                return AuthenticationResult(
+                    success=True, user_info={"success_slo": True}
+                )
         else:
-            return {"error": auth.get_last_error_reason()}
+            return AuthenticationResult(
+                success=False, error=auth.get_last_error_reason()
+            )
 
     @staticmethod
     async def single_log_out(auth: OneLogin_Saml2_Auth) -> RedirectResponse:
@@ -112,7 +117,7 @@ class SAMLAuthentication(AuthInterface):
     @staticmethod
     async def assertion_consumer_service(
         auth: OneLogin_Saml2_Auth, request_args: Dict, request: Request
-    ) -> Union[RedirectResponse, Dict]:
+    ) -> Union[RedirectResponse, AuthenticationResult]:
         auth.process_response()
         errors = auth.get_errors()
         if not len(errors) == 0:
@@ -138,7 +143,7 @@ class SAMLAuthentication(AuthInterface):
                 status_code=303,
             )
 
-        return userdata
+        return AuthenticationResult(success=True, user_info=userdata)
 
     @staticmethod
     async def prepare_request(request: Request):

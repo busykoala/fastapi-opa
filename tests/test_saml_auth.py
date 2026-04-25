@@ -6,6 +6,7 @@ from starlette.responses import RedirectResponse
 
 from fastapi_opa.auth.auth_saml import SAMLAuthentication
 from fastapi_opa.auth.auth_saml import SAMLConfig
+from fastapi_opa.models import AuthenticationResult
 
 SESSION_INDEX = "8167416b-6a10-4a4c-889c-" + (
     "7574074e3fc5::f1eaf88b-2bb9-4d2e-8d3d-39587ba1ef37"
@@ -97,7 +98,9 @@ async def test_assertion_consumer_service(saml_util_mock):
     }
 
     request_mock.session.__setitem__.assert_called_once()
-    assert expected == response
+    assert isinstance(response, AuthenticationResult)
+    assert response.success is True
+    assert expected == response.user_info
 
 
 @pytest.mark.asyncio

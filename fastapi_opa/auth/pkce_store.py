@@ -1,8 +1,9 @@
-"""PKCE Store abstraction for secure code_verifier storage."""
+"""PKCE Store abstraction for secure PKCE request storage."""
 
 import logging
 import threading
 import time
+from dataclasses import dataclass
 from typing import Dict
 from typing import Optional
 from typing import Protocol
@@ -14,6 +15,14 @@ logger = logging.getLogger(__name__)
 # Default configuration
 DEFAULT_TTL_SECONDS = 600  # 10 minutes
 DEFAULT_MAX_ENTRIES = 10000
+
+
+@dataclass(frozen=True)
+class PKCERequestData:
+    """Stored PKCE request state for the authorization code flow."""
+
+    code_verifier: str
+    callback_uri: str
 
 
 @runtime_checkable
@@ -102,6 +111,19 @@ class InMemoryPKCEStore:
 
             self._store[state] = (code_verifier, time.time())
 
+    def store_request_data(
+        self, state: str, code_verifier: str, callback_uri: str
+    ) -> None:
+        """Store full PKCE request data.
+
+        This extends the legacy verifier-only contract without breaking
+        custom stores that still implement only store/retrieve.
+        """
+        self.store(
+            state,
+            self._serialize_request_data(code_verifier, callback_uri),
+        )
+
     def retrieve(self, state: str) -> Optional[str]:
         """Retrieve and remove code_verifier, checking TTL."""
         with self._lock:
@@ -118,6 +140,13 @@ class InMemoryPKCEStore:
                 return None
 
             return code_verifier
+
+    def retrieve_request_data(self, state: str) -> Optional[PKCERequestData]:
+        """Retrieve full PKCE request data when available."""
+        entry = self.retrieve(state)
+        if entry is None:
+            return None
+        return self._deserialize_request_data(entry)
 
     def cleanup_expired(self) -> int:
         """Remove all expired entries. Returns count of removed entries."""
@@ -151,3 +180,20 @@ class InMemoryPKCEStore:
         """Current number of entries in the store."""
         with self._lock:
             return len(self._store)
+
+    @staticmethod
+    def _serialize_request_data(code_verifier: str, callback_uri: str) -> str:
+        return f"{code_verifier}\n{callback_uri}"
+
+    @staticmethod
+    def _deserialize_request_data(entry: str) -> PKCERequestData:
+        code_verifier, separator, callback_uri = entry.partition("\n")
+        if not separator:
+            return PKCERequestData(
+                code_verifier=entry,
+                callback_uri="",
+            )
+        return PKCERequestData(
+            code_verifier=code_verifier,
+            callback_uri=callback_uri,
+        )

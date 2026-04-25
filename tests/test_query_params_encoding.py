@@ -128,8 +128,10 @@ class TestQueryParamsEncoding:
         assert params["code_challenge_method"][0] == "S256"
         assert params["state"][0] == "my_state"
 
-    def test_get_auth_redirect_uri_no_state_when_none(self, oidc_config):
-        """Test that state is not included when None."""
+    def test_get_auth_redirect_uri_generates_state_when_none(
+        self, oidc_config
+    ):
+        """Test that state is auto-generated when not provided (PKCE requires it)."""
         auth = OIDCAuthentication(oidc_config)
 
         redirect_url = auth.get_auth_redirect_uri(
@@ -141,7 +143,9 @@ class TestQueryParamsEncoding:
         parsed = urlparse(redirect_url)
         params = parse_qs(parsed.query)
 
-        assert "state" not in params
+        # PKCE always requires a state for request correlation
+        assert "state" in params
+        assert len(params["state"][0]) > 0
 
     def test_encoding_special_unicode_characters(self, oidc_config):
         """Test encoding of unicode characters in callback URI."""

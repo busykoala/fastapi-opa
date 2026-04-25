@@ -1,5 +1,4 @@
 from json import JSONDecodeError
-from typing import Dict
 from typing import List
 from typing import Union
 
@@ -10,6 +9,7 @@ from starlette.responses import RedirectResponse
 from fastapi_opa.auth import OIDCConfig
 from fastapi_opa.auth.auth_interface import AuthInterface
 from fastapi_opa.auth.exceptions import AuthenticationException
+from fastapi_opa.models import AuthenticationResult
 from fastapi_opa.opa.opa_config import Injectable
 
 
@@ -27,16 +27,18 @@ class AuthenticationDummy(AuthInterface):
         self.accept_all = accept_all
 
     def authenticate(
-        self, request: Request, accepted_methods=[]
-    ) -> Union[RedirectResponse, Dict]:
+        self, request: Request, accepted_methods=None
+    ) -> Union[RedirectResponse, AuthenticationResult]:
         if not self.accept_all and "Authorization" not in request.headers:
             raise AuthenticationException("Unauthorized")
-        else:
-            return {
+        return AuthenticationResult(
+            success=True,
+            user_info={
                 "stuff": "some info",
                 "username": "John Doe",
                 "role": "Administrator",
-            }
+            },
+        )
 
 
 class OPAInjectableExample(Injectable):

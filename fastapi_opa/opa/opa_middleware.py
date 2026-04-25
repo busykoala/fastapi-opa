@@ -143,11 +143,6 @@ class OPAMiddleware:
                             elif auth_result.validated_token:
                                 user_info = auth_result.validated_token.copy()
                             break
-                    # Handle dict (legacy style for backwards compatibility)
-                    elif isinstance(auth_result, dict):
-                        successful = True
-                        user_info = auth_result.copy()
-                        break
                 except AuthenticationException:
                     logger.error("AuthenticationException raised on login")
 

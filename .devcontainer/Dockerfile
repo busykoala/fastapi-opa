@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
-ARG PYTHON_VERSIONS="3.8 3.9 3.10 3.11 3.12 3.13"
+ARG PYTHON_VERSIONS="3.10 3.11 3.12 3.13"
 ENV PYENV_ROOT=/usr/local/pyenv
 # Ensure uv (installed into /usr/local/bin) and pyenv shims are ahead of the base PATH.
 ENV PATH="/usr/local/bin:${PYENV_ROOT}/bin:${PYENV_ROOT}/shims:${PATH}"

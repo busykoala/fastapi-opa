@@ -1,6 +1,10 @@
+import hashlib
 import json
 import logging
+import secrets
+import threading
 from base64 import b64encode
+from base64 import urlsafe_b64encode
 from contextvars import ContextVar
 from dataclasses import dataclass
 from dataclasses import field
@@ -27,18 +31,16 @@ except ImportError:
     AUTHLIB_AVAILABLE = False
 
     def generate_token(length: int = 48) -> str:  # type: ignore[misc]
-        """Placeholder that raises ImportError with helpful message."""
-        raise ImportError(
-            "authlib is required for OIDC authentication with PKCE. "
-            "Install it with: pip install 'fastapi-opa[authlib]'"
-        )
+        """Generate a URL-safe token without requiring Authlib."""
+        token = ""  # nosec B105
+        while len(token) < length:
+            token += secrets.token_urlsafe(length)
+        return token[:length]
 
     def create_s256_code_challenge(verifier: str) -> str:  # type: ignore[misc]
-        """Placeholder that raises ImportError with helpful message."""
-        raise ImportError(
-            "authlib is required for OIDC authentication with PKCE. "
-            "Install it with: pip install 'fastapi-opa[authlib]'"
-        )
+        """Create an RFC 7636 S256 code challenge without requiring Authlib."""
+        digest = hashlib.sha256(verifier.encode("ascii")).digest()
+        return urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
 
 
 from starlette.requests import Request
@@ -47,6 +49,7 @@ from starlette.responses import RedirectResponse
 from fastapi_opa.auth.auth_interface import AuthInterface
 from fastapi_opa.auth.exceptions import OIDCException
 from fastapi_opa.auth.pkce_store import InMemoryPKCEStore
+from fastapi_opa.auth.pkce_store import PKCERequestData
 from fastapi_opa.auth.pkce_store import PKCEStoreProtocol
 from fastapi_opa.models import AuthenticationResult
 
@@ -185,6 +188,8 @@ class OIDCAuthentication(AuthInterface):
             if config.pkce_store is not None
             else InMemoryPKCEStore()
         )
+        self._fallback_callback_uris: Dict[str, str] = {}
+        self._fallback_callback_uris_lock = threading.Lock()
         if self.config.well_known_endpoint:
             self.set_from_well_known()
         elif (
@@ -220,6 +225,63 @@ class OIDCAuthentication(AuthInterface):
     def _retrieve_pkce_verifier(self, state: str) -> Optional[str]:
         """Retrieve and remove code_verifier for the given state."""
         return self._pkce_store.retrieve(state)
+
+    def _store_pkce_request_data(
+        self, state: str, code_verifier: str, callback_uri: str
+    ) -> None:
+        """Store the verifier together with the exact redirect URI."""
+        if hasattr(self._pkce_store, "store_request_data"):
+            self._pkce_store.store_request_data(  # type: ignore[attr-defined]
+                state,
+                code_verifier,
+                callback_uri,
+            )
+            return
+
+        self._pkce_store.store(state, code_verifier)
+        with self._fallback_callback_uris_lock:
+            self._fallback_callback_uris[state] = callback_uri
+
+    def _retrieve_pkce_request_data(
+        self, state: str
+    ) -> Optional[PKCERequestData]:
+        """Retrieve the verifier and original callback URI for a state."""
+        if hasattr(self._pkce_store, "retrieve_request_data"):
+            return self._pkce_store.retrieve_request_data(  # type: ignore[attr-defined]
+                state
+            )
+
+        code_verifier = self._pkce_store.retrieve(state)
+        if code_verifier is None:
+            return None
+        with self._fallback_callback_uris_lock:
+            callback_uri = self._fallback_callback_uris.pop(state, "")
+        return PKCERequestData(
+            code_verifier=code_verifier,
+            callback_uri=callback_uri,
+        )
+
+    def _build_callback_uri(
+        self, request: Request, query_params: Optional[Dict[str, str]] = None
+    ) -> str:
+        """Build a callback URI that respects forwarded headers when enabled."""
+        uri_parts = [
+            (
+                request.headers.get("x-forwarded-proto", request.url.scheme)
+                if self.config.trust_x_headers
+                else request.url.scheme
+            ),
+            (
+                request.headers.get("x-forwarded-host", request.url.netloc)
+                if self.config.trust_x_headers
+                else request.url.netloc
+            ),
+            request.url.path,
+            "",
+            urlencode(query_params) if query_params else "",
+            "",
+        ]
+        return urlunparse(uri_parts)
 
     def set_from_well_known(self):
         endpoints = self.to_dict_or_raise(
@@ -279,58 +341,18 @@ class OIDCAuthentication(AuthInterface):
         if accepted_methods is None:
             accepted_methods = ["id_token", "access_token"]
 
-        callback_uri = urlunparse(
-            [
-                (
-                    request.headers.get(
-                        "x-forwarded-proto", request.url.scheme
-                    )
-                    if self.config.trust_x_headers
-                    else request.url.scheme
-                ),
-                (
-                    request.headers.get("x-forwarded-host", request.url.netloc)
-                    if self.config.trust_x_headers
-                    else request.url.netloc
-                ),
-                request.url.path,
-                "",
-                "",
-                "",
-            ]
-        )
         code = request.query_params.get("code")
         state = request.query_params.get("state")
         bearer = request.headers.get("Authorization")
 
         # redirect to id provider if code query-value is not present
         if not code and not bearer:
-            # Generate fresh PKCE pair for this authorization request
-            code_verifier, code_challenge = self._generate_pkce_pair()
-
-            # Generate unique state for this request
-            pkce_state = generate_token(32)
-
-            # Store code_verifier for later retrieval
-            self._store_pkce_verifier(pkce_state, code_verifier)
-
-            # Build query params safely using urlencode to prevent injection
-            # This properly encodes special characters like &, =, etc.
-            existing_params = dict(request.query_params.items())
-            query_string = (
-                urlencode(existing_params) if existing_params else ""
-            )
-            redirect_callback = (
-                f"{callback_uri}?{query_string}"
-                if query_string
-                else callback_uri
+            redirect_callback = self._build_callback_uri(
+                request,
+                dict(request.query_params.items()),
             )
             return RedirectResponse(
-                url=self.get_auth_redirect_uri(
-                    redirect_callback,
-                    code_challenge=code_challenge,
-                    state=pkce_state,
-                ),
+                url=self.get_auth_redirect_uri(redirect_callback),
                 status_code=303,
             )
 
@@ -341,16 +363,30 @@ class OIDCAuthentication(AuthInterface):
                     raise OIDCException("Using id token is not accepted")
 
                 # Retrieve code_verifier for this state
-                code_verifier = (
-                    self._retrieve_pkce_verifier(state) if state else None
+                request_data = (
+                    self._retrieve_pkce_request_data(state) if state else None
                 )
-                if not code_verifier:
+                if not request_data or not request_data.code_verifier:
                     raise OIDCException(
                         "Invalid or missing state parameter for PKCE"
                     )
 
+                token_callback_uri = (
+                    request_data.callback_uri
+                    or self._build_callback_uri(
+                        request,
+                        {
+                            key: value
+                            for key, value in request.query_params.items()
+                            if key not in {"code", "state"}
+                        },
+                    )
+                )
+
                 auth_token = self.get_auth_token(
-                    code, callback_uri, code_verifier
+                    code,
+                    token_callback_uri,
+                    request_data.code_verifier,
                 )
                 id_token = auth_token.get("id_token")
 
@@ -450,9 +486,20 @@ class OIDCAuthentication(AuthInterface):
             code_challenge: The PKCE code_challenge (generated per-request)
             state: The state parameter to correlate request/response
         """
-        if code_challenge is None:
-            # Fallback: generate new PKCE pair (for backwards compatibility)
-            _, code_challenge = self._generate_pkce_pair()
+        generated_code_verifier = None
+        if code_challenge is None or state is None:
+            generated_code_verifier, generated_code_challenge = (
+                self._generate_pkce_pair()
+            )
+            code_challenge = code_challenge or generated_code_challenge
+            state = state or generate_token(32)
+
+        if generated_code_verifier is not None and state is not None:
+            self._store_pkce_request_data(
+                state,
+                generated_code_verifier,
+                callback_uri,
+            )
 
         # Build params dict - urlencode will handle proper encoding
         params = {

@@ -17,6 +17,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from fastapi_opa.models import AuthenticationResult
 from fastapi_opa.opa.opa_config import OPAConfig
 from fastapi_opa.opa.opa_middleware import OPAMiddleware
 
@@ -122,7 +123,9 @@ class TestOPAIntegrationWithEnableAuthorization:
         """
         mock_auth = Mock()
         mock_auth.authenticate = AsyncMock(
-            return_value={"sub": "user123", "roles": ["viewer"]}
+            return_value=AuthenticationResult(
+                success=True, user_info={"sub": "user123", "roles": ["viewer"]}
+            )
         )
 
         config = OPAConfig(
@@ -174,7 +177,9 @@ class TestOPAIntegrationWithEnableAuthorization:
         """
         mock_auth = Mock()
         mock_auth.authenticate = AsyncMock(
-            return_value={"sub": "user123", "roles": ["viewer"]}
+            return_value=AuthenticationResult(
+                success=True, user_info={"sub": "user123", "roles": ["viewer"]}
+            )
         )
 
         config = OPAConfig(
@@ -219,7 +224,9 @@ class TestAuthorizationDenial:
         """Request should be denied when OPA returns allow=false."""
         mock_auth = Mock()
         mock_auth.authenticate = AsyncMock(
-            return_value={"sub": "user123", "roles": ["viewer"]}
+            return_value=AuthenticationResult(
+                success=True, user_info={"sub": "user123", "roles": ["viewer"]}
+            )
         )
 
         config = OPAConfig(
@@ -275,7 +282,10 @@ class TestAuthorizationDenial:
         """Request should be allowed when OPA returns allow=true."""
         mock_auth = Mock()
         mock_auth.authenticate = AsyncMock(
-            return_value={"sub": "admin_user", "roles": ["admin"]}
+            return_value=AuthenticationResult(
+                success=True,
+                user_info={"sub": "admin_user", "roles": ["admin"]},
+            )
         )
 
         config = OPAConfig(
@@ -366,7 +376,11 @@ class TestInfoLogWhenAuthorizationSkipped:
     async def test_info_logged_when_opa_skipped(self, mocker, caplog):
         """An info message should be logged when OPA check is skipped."""
         mock_auth = Mock()
-        mock_auth.authenticate = AsyncMock(return_value={"sub": "user123"})
+        mock_auth.authenticate = AsyncMock(
+            return_value=AuthenticationResult(
+                success=True, user_info={"sub": "user123"}
+            )
+        )
 
         config = OPAConfig(
             authentication=mock_auth,
