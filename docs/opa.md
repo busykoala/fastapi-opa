@@ -41,8 +41,9 @@ request context.
 ## Writing policies
 
 OPA evaluates the input against a package whose name matches `OPAConfig.package_name`
-(default `httpapi.authz`). The middleware looks for an `allow` rule and treats any
-truthy value as permitted.
+(default `httpapi.authz`). The middleware looks for an `allow` rule and permits the
+request only when `allow` evaluates to the boolean value `true`; non-boolean values
+are rejected with 403.
 
 Example policy (Rego v1):
 
