@@ -75,7 +75,7 @@ async def test_not_allowing_opa_flow(client):
 
     assert expected_url == url
     assert expected_payload == payload
-    assert response.json() == {"message": "Unauthorized"}
+    assert response.json() == {"message": "Forbidden"}
 
 
 @pytest.mark.asyncio
@@ -85,8 +85,8 @@ async def test_non_boolean_allow_value_is_rejected(client):
         req.return_value.json = lambda: {"result": {"allow": "false"}}
         response = client.get("/")
 
-    assert response.status_code == 401
-    assert response.json() == {"message": "Unauthorized"}
+    assert response.status_code == 403
+    assert response.json() == {"message": "Forbidden"}
 
 
 @pytest.mark.asyncio

@@ -3,7 +3,7 @@
 ## [3.0.0] - 2026-04-25
 - Drop Python 3.8 and 3.9 support; minimum is now Python 3.10.
 - Add PKCE support (RFC 7636) with pluggable `PKCEStoreProtocol` and stdlib fallback (no hard `authlib` dependency; available as optional extra).
-- Add `CookieAuthMiddleware` for cookie-based bearer token storage and refresh.
+- Add `CookieAuthMiddleware` for cookie-based bearer token storage.
 - Add `enable_authorization` flag to `OPAMiddleware` for authentication-only mode.
 - `AuthenticationResult` typed Pydantic model replaces raw `dict` returns from auth handlers.
 - `graphql` extra now uses `graphql-core` instead of `graphene`.

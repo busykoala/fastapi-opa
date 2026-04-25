@@ -1,6 +1,7 @@
 """Cookie-based authentication middleware implementation"""
 
 import logging
+from http.cookies import SimpleCookie
 
 from starlette.responses import RedirectResponse
 from starlette.types import ASGIApp
@@ -27,7 +28,7 @@ class CookieAuthMiddleware:
         config: OPAConfig,
         cookie_config: TokenCookieConfig | None = None,
         skip_endpoints: list[str] | None = None,
-        enable_authorization: bool | None = True,
+        enable_authorization: bool = True,
         max_buffer_size: int | None = None,
     ) -> None:
         self.app = app
@@ -109,12 +110,11 @@ class CookieAuthMiddleware:
 
         for name, value in headers:
             if name.lower() == b"cookie":
-                cookies = value.decode("latin-1").split("; ")
-                for cookie in cookies:
-                    if cookie.startswith(f"{self.cookie_config.cookie_name}="):
-                        token = cookie.split("=", 1)[1]
-                        logger.debug("Found token in cookie")
-                        return token
+                sc: SimpleCookie = SimpleCookie()
+                sc.load(value.decode("latin-1"))
+                if self.cookie_config.cookie_name in sc:
+                    logger.debug("Found token in cookie")
+                    return sc[self.cookie_config.cookie_name].value
 
         logger.debug("No token found in cookies")
         return None

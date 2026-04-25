@@ -271,9 +271,9 @@ class TestAuthorizationDenial:
         # App should NOT have been called
         app_mock.assert_not_called()
 
-        # Should have sent 401 response
+        # Should have sent 403 response
         assert any(
-            msg.get("status") == 401
+            msg.get("status") == 403
             for msg in sent_messages
             if msg.get("type") == "http.response.start"
         )

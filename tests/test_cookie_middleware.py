@@ -255,6 +255,18 @@ class TestCookieMiddlewareHelpers:
 
         assert token == "mytoken123"
 
+    def test_extract_token_from_cookie_no_space_after_semicolon(
+        self, middleware
+    ):
+        """Test extraction when cookies are separated by ';' without trailing space"""
+        headers = [
+            (b"cookie", b"other=value;access_token=mytoken123;another=test"),
+        ]
+
+        token = middleware._extract_token_from_cookie(headers)
+
+        assert token == "mytoken123"
+
     def test_extract_token_from_cookie_not_found(self, middleware):
         """Test extraction when cookie not present"""
         headers = [

@@ -80,7 +80,7 @@ class OPAMiddleware:
         app: ASGIApp,
         config: OPAConfig,
         skip_endpoints: list[str] | None = None,
-        enable_authorization: bool | None = True,
+        enable_authorization: bool = True,
         max_buffer_size: int | None = None,
     ) -> None:
         if skip_endpoints is None:
@@ -142,12 +142,17 @@ class OPAMiddleware:
                         scope["state"]["auth_result"] = auth_result
                         successful = auth_result.success
                         if successful:
-                            # Extract user info from the result
-                            user_info = auth_result.model_dump()
                             if auth_result.user_info:
                                 user_info = auth_result.user_info.copy()
                             elif auth_result.validated_token:
                                 user_info = auth_result.validated_token.copy()
+                            else:
+                                logger.warning(
+                                    "Authentication handler returned success=True "
+                                    "without user_info or validated_token; "
+                                    "treating as unauthorized."
+                                )
+                                successful = False
                             break
                 except AuthenticationException:
                     logger.exception("AuthenticationException raised on login")
@@ -222,15 +227,15 @@ class OPAMiddleware:
         # Authorization enabled - check OPA decision
         if opa_decision.status_code != 200:
             logger.error("Returned with status %s.", opa_decision.status_code)
-            return await self.get_unauthorized_response(scope, receive, send)
+            return await self.get_forbidden_response(scope, receive, send)
         try:
             payload = opa_decision.json()
         except JSONDecodeError:
             logger.exception("Unable to decode OPA response.")
-            return await self.get_unauthorized_response(scope, receive, send)
+            return await self.get_forbidden_response(scope, receive, send)
         if not isinstance(payload, dict):
             logger.error("OPA response is not a JSON object.")
-            return await self.get_unauthorized_response(scope, receive, send)
+            return await self.get_forbidden_response(scope, receive, send)
         result = cast(dict[str, object], payload).get("result")
         is_authorized = (
             cast(dict[str, object], result).get("allow")
@@ -238,7 +243,7 @@ class OPAMiddleware:
             else None
         )
         if is_authorized is not True:
-            return await self.get_unauthorized_response(scope, receive, send)
+            return await self.get_forbidden_response(scope, receive, send)
 
         return await self.app(scope, own_receive, send)
 
@@ -248,5 +253,14 @@ class OPAMiddleware:
     ) -> None:
         response = JSONResponse(
             status_code=401, content={"message": "Unauthorized"}
+        )
+        return await response(scope, receive, send)
+
+    @staticmethod
+    async def get_forbidden_response(
+        scope: Scope, receive: Receive, send: Send
+    ) -> None:
+        response = JSONResponse(
+            status_code=403, content={"message": "Forbidden"}
         )
         return await response(scope, receive, send)
