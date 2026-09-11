@@ -1,6 +1,6 @@
 [project]
 name = "fastapi-opa"
-version = "3.0.0"
+version = "3.1.0"
 description = "FastAPI OPA middleware incl. auth flow."
 authors = [{name = "Matthias Osswald", email = "info@busykoala.io"}]
 license = {text = "GPL-3.0-or-later"}

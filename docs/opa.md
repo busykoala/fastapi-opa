@@ -106,9 +106,35 @@ opa_config = OPAConfig(
 | `injectables` | `[]` | `Injectable` instances to add extra fields to the OPA input |
 | `accepted_methods` | `["id_token", "access_token"]` | Token types the middleware accepts during authentication |
 | `package_name` | `"httpapi.authz"` | Rego package name; must match the `package` declaration in your policy |
+| `opa_client` | `httpx.AsyncClient` | Asynchronous HTTP client for the decision request; see [Bringing your own HTTP client](#bringing-your-own-http-client) |
 
 The `package_name` maps to the OPA REST API path by replacing dots with slashes:
 `"httpapi.authz"` → `/v1/data/httpapi/authz`.
+
+### Bringing your own HTTP client
+
+The middleware asks OPA for a decision with an asynchronous request, so the
+event loop keeps serving other requests while OPA answers. By default it
+creates an `httpx.AsyncClient` with a five-second timeout on first use and
+keeps it for connection pooling; `await middleware.aclose()` releases it.
+
+Pass `opa_client` to use a client of your own, for example one with custom
+TLS settings, a different timeout, or another library. Any object with an
+`async post(url, *, json)` method that returns something exposing
+`status_code` and `json()` works:
+
+```python
+import httpx
+
+opa_config = OPAConfig(
+    authentication=oidc_auth,
+    opa_host="http://localhost:8181",
+    opa_client=httpx.AsyncClient(timeout=2.0, verify="/etc/ssl/opa-ca.pem"),
+)
+```
+
+The same hook is the seam for tests: an in-memory client records the input
+documents and answers as told, and nothing needs patching.
 
 ### Authentication handler chains
 

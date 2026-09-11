@@ -1,5 +1,10 @@
 # Change Log
 
+## [3.1.0] - 2026-09-11
+- `OPAMiddleware` requests the OPA decision asynchronously with `httpx.AsyncClient` instead of a blocking `requests.post` that stopped the event loop for every request while OPA answered.
+- Add `OPAConfig(opa_client=...)` to inject any asynchronous HTTP client (custom TLS, timeout, another library) and to test without patching; `OPAMiddleware.aclose()` releases the default client.
+- `httpx` is now a runtime dependency.
+
 ## [3.0.0] - 2026-04-25
 - Drop Python 3.8 and 3.9 support; minimum is now Python 3.10.
 - Add PKCE support (RFC 7636) with pluggable `PKCEStoreProtocol` and stdlib fallback (no hard `authlib` dependency; available as optional extra).
