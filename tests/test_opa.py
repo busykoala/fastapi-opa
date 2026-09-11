@@ -1,6 +1,4 @@
-import json
 import re
-from unittest.mock import patch
 
 import pytest
 from lxml import html
@@ -31,14 +29,11 @@ def test_opa_url_uses_package_name():
     )
 
 
-def test_successful_opa_flow(client):
-    with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
-        req.return_value.status_code = 200
-        req.return_value.json = lambda: {"result": {"allow": True}}
-        response = client.get("/")
+def test_successful_opa_flow(client, opa_client):
+    response = client.get("/")
 
-    url = req.call_args_list[0][0][0]
-    payload = json.loads(req.call_args_list[0][1].get("data")).get("input")
+    url, body = opa_client.calls[0]
+    payload = body["input"]
 
     expected_url = "http://localhost:8181/v1/data/httpapi/authz"
     expected_payload = {
@@ -55,14 +50,12 @@ def test_successful_opa_flow(client):
 
 
 @pytest.mark.asyncio
-async def test_not_allowing_opa_flow(client):
-    with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
-        req.return_value.status_code = 200
-        req.return_value.json = lambda: {"result": {"allow": False}}
-        response = client.get("/")
+async def test_not_allowing_opa_flow(client, opa_client):
+    opa_client.payload = {"result": {"allow": False}}
+    response = client.get("/")
 
-    url = req.call_args_list[0][0][0]
-    payload = json.loads(req.call_args_list[0][1].get("data")).get("input")
+    url, body = opa_client.calls[0]
+    payload = body["input"]
 
     expected_url = "http://localhost:8181/v1/data/httpapi/authz"
     expected_payload = {
@@ -79,21 +72,18 @@ async def test_not_allowing_opa_flow(client):
 
 
 @pytest.mark.asyncio
-async def test_non_boolean_allow_value_is_rejected(client):
-    with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
-        req.return_value.status_code = 200
-        req.return_value.json = lambda: {"result": {"allow": "false"}}
-        response = client.get("/")
+async def test_non_boolean_allow_value_is_rejected(client, opa_client):
+    opa_client.payload = {"result": {"allow": "false"}}
+    response = client.get("/")
 
     assert response.status_code == 403
     assert response.json() == {"message": "Forbidden"}
 
 
 @pytest.mark.asyncio
-async def test_function_injection(injected_client):
-    with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
-        payload = {"some": "data"}
-        injected_client.post("/", json=payload)
+async def test_function_injection(injected_client, opa_client):
+    payload = {"some": "data"}
+    injected_client.post("/", json=payload)
 
     expected_payload = {
         "stuff": "some info",
@@ -104,7 +94,7 @@ async def test_function_injection(injected_client):
         "request_path": [""],
     }
 
-    payload = json.loads(req.call_args_list[0][1].get("data")).get("input")
+    payload = opa_client.calls[0][1]["input"]
     assert expected_payload == payload
 
 
@@ -153,14 +143,11 @@ def test_multiple_authentication(
     header_key = api_key_auth["header_key"]
     api_key = api_key_auth["api_key"]
 
-    with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
-        req.return_value.status_code = 200
-        req.return_value.json = lambda: {"result": {"allow": True}}
-        response = client.get("/")
-        assert response.status_code == 401
+    response = client.get("/")
+    assert response.status_code == 401
 
-        response = client.get("/", headers={"Authorization": "1234"})
-        assert response.status_code == 200
+    response = client.get("/", headers={"Authorization": "1234"})
+    assert response.status_code == 200
 
-        response = client.get("/", headers={header_key: api_key})
-        assert response.status_code == 200
+    response = client.get("/", headers={header_key: api_key})
+    assert response.status_code == 200

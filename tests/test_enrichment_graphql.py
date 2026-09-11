@@ -1,6 +1,3 @@
-import json
-from unittest.mock import patch
-
 import pytest
 
 from fastapi_opa.opa.enrichment.graphql_enrichment import GraphQLAnalysis
@@ -20,10 +17,9 @@ def test_invalid_graphql_query_returns_empty_operations():
 
 
 @pytest.mark.asyncio
-async def test_gql_injection(gql_injected_client):
-    with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
-        payload = GQL_TEST_CASES[0][0]
-        gql_injected_client.post("/", json=payload)
+async def test_gql_injection(gql_injected_client, opa_client):
+    payload = GQL_TEST_CASES[0][0]
+    gql_injected_client.post("/", json=payload)
 
     expected_payload = {
         "stuff": "some info",
@@ -43,7 +39,5 @@ async def test_gql_injection(gql_injected_client):
         "request_path": [""],
     }
 
-    actual_payload = json.loads(req.call_args_list[0][1].get("data")).get(
-        "input"
-    )
+    actual_payload = opa_client.calls[0][1]["input"]
     assert expected_payload == actual_payload

@@ -1,12 +1,10 @@
-import json
 import logging
 import re
 from collections.abc import Awaitable
 from json.decoder import JSONDecodeError
-from typing import Protocol
 from typing import cast
 
-import requests
+import httpx
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
@@ -18,17 +16,13 @@ from starlette.types import Send
 
 from fastapi_opa.auth.exceptions import AuthenticationException
 from fastapi_opa.models import AuthenticationResult
+from fastapi_opa.opa.opa_client import OPAClient
+from fastapi_opa.opa.opa_client import OPAResponse
+from fastapi_opa.opa.opa_client import default_opa_client
 from fastapi_opa.opa.opa_config import OPAConfig
 
 Pattern = re.Pattern
 logger = logging.getLogger(__name__)
-
-
-class ResponseLike(Protocol):
-    status_code: int
-    url: str
-
-    def json(self) -> object: ...
 
 
 def should_skip_endpoint(
@@ -94,6 +88,10 @@ class OPAMiddleware:
         self.skip_endpoints = [re.compile(skip) for skip in skip_endpoints]
         self.enable_authorization = enable_authorization
         self.max_buffer_size = max_buffer_size
+        # The default client is built lazily, on first use inside the
+        # running loop, and kept so connections are pooled; `aclose()`
+        # releases it. An injected client is owned by whoever passed it.
+        self._default_client: httpx.AsyncClient | None = None
         if not self.enable_authorization:
             logger.warning(
                 "OPA authorization is disabled (enable_authorization=False). "
@@ -186,8 +184,8 @@ class OPAMiddleware:
             data = {"input": user_info}
 
             if self.enable_authorization:
-                opa_decision = requests.post(
-                    self.config.opa_url, data=json.dumps(data), timeout=5
+                opa_decision = await self.opa_client.post(
+                    self.config.opa_url, json=data
                 )
                 return await self.get_decision(
                     scope, own_receive, receive, send, opa_decision
@@ -204,13 +202,28 @@ class OPAMiddleware:
                 return await response(scope, receive, send)
             raise
 
+    @property
+    def opa_client(self) -> OPAClient:
+        """The client the decision request goes through."""
+        if self.config.opa_client is not None:
+            return self.config.opa_client
+        if self._default_client is None:
+            self._default_client = default_opa_client()
+        return self._default_client
+
+    async def aclose(self) -> None:
+        """Close the default client, if this middleware created one."""
+        if self._default_client is not None:
+            await self._default_client.aclose()
+            self._default_client = None
+
     async def get_decision(
         self,
         scope: Scope,
         own_receive: OwnReceive,
         receive: Receive,
         send: Send,
-        opa_decision: ResponseLike | None = None,
+        opa_decision: OPAResponse | None = None,
     ) -> None:
         # When authorization is disabled, allow all authenticated requests
         if not self.enable_authorization:

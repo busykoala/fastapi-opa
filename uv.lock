@@ -345,7 +345,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -370,11 +370,12 @@ wheels = [
 
 [[package]]
 name = "fastapi-opa"
-version = "3.0.0"
+version = "3.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "pydantic" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "requests" },
@@ -397,7 +398,6 @@ saml = [
 dev = [
     { name = "bandit" },
     { name = "freezegun" },
-    { name = "httpx" },
     { name = "mock" },
     { name = "mypy" },
     { name = "nest-asyncio" },
@@ -418,6 +418,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=3.3.0" },
     { name = "fastapi", specifier = ">=0.113.0" },
     { name = "graphql-core", marker = "extra == 'graphql'", specifier = ">=3.2.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "pydantic", specifier = ">=2.8.0" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.1.0" },
     { name = "python-multipart", marker = "extra == 'saml'", specifier = ">=0.0.7" },
@@ -431,7 +432,6 @@ provides-extras = ["graphql", "saml", "authlib"]
 dev = [
     { name = "bandit", specifier = ">=1.9.4,<2" },
     { name = "freezegun", specifier = ">=1.5.5,<2" },
-    { name = "httpx", specifier = ">=0.28.1,<0.29" },
     { name = "mock", specifier = ">=5.2.0,<6" },
     { name = "mypy", specifier = ">=1.20.2,<2" },
     { name = "nest-asyncio", specifier = ">=1.6.0,<2" },

@@ -6,6 +6,7 @@ from typing import TypeGuard
 from starlette.requests import Request
 
 from fastapi_opa.auth.auth_interface import AuthInterface
+from fastapi_opa.opa.opa_client import OPAClient
 
 
 class Injectable(ABC):
@@ -44,6 +45,7 @@ class OPAConfig:
         injectables: list[Injectable] | None = None,
         accepted_methods: list[str] | None = None,
         package_name: str | None = "httpapi.authz",
+        opa_client: OPAClient | None = None,
     ) -> None:
         """
         Configuration container for the OPAMiddleware.
@@ -62,6 +64,12 @@ class OPAConfig:
             List of accepted authentication methods.
         package_name: str, default="httpapi.authz
             Name of the OPA package to be used (specified in the policy).
+        opa_client: OPAClient, default=None
+            Asynchronous HTTP client used for the decision request. Any
+            object with ``async post(url, *, json)`` returning
+            ``status_code`` and ``json()`` works; ``httpx.AsyncClient``
+            does as is. Defaults to an ``httpx.AsyncClient`` with a
+            five-second timeout, created by the middleware on first use.
         """
 
         if accepted_methods is None:
@@ -81,3 +89,4 @@ class OPAConfig:
         self.injectables = injectables
         self.accepted_methods = accepted_methods
         self.package_name = package_name
+        self.opa_client = opa_client

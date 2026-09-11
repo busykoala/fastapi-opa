@@ -74,3 +74,33 @@ def oidc_config():
         client_id="example-client",
         client_secret="secret",
     )  # nosec
+
+
+# ***************************
+# OPA client
+# ***************************
+class FakeOPAClient:
+    """An in-memory ``OPAClient``: records every decision request, answers as told.
+
+    Injected through ``OPAConfig(opa_client=...)`` so the tests never patch
+    the middleware's transport.
+    """
+
+    def __init__(
+        self,
+        status_code: int = 200,
+        payload: object | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self.status_code = status_code
+        self.payload: object = (
+            {"result": {"allow": True}} if payload is None else payload
+        )
+        self.error = error
+        self.calls: list[tuple[str, object]] = []
+
+    async def post(self, url: str, *, json: object) -> Mock:
+        self.calls.append((url, json))
+        if self.error is not None:
+            raise self.error
+        return mock_response(self.status_code, json_data=self.payload)
