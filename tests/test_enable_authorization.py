@@ -10,7 +10,6 @@ Setting enable_authorization=False disables authorization entirely.
 Only authentication is performed. Use only for development/testing.
 """
 
-import json
 import logging
 from typing import cast
 from unittest.mock import AsyncMock
@@ -21,6 +20,7 @@ import pytest
 from fastapi_opa.models import AuthenticationResult
 from fastapi_opa.opa.opa_config import OPAConfig
 from fastapi_opa.opa.opa_middleware import OPAMiddleware
+from tests.utils import FakeOPAClient
 
 
 class TestEnableAuthorizationDefault:
@@ -129,19 +129,11 @@ class TestOPAIntegrationWithEnableAuthorization:
             )
         )
 
+        opa_client = FakeOPAClient()
         config = OPAConfig(
             authentication=mock_auth,
             opa_host="http://localhost:8181",
-        )
-
-        # Mock OPA response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"result": {"allow": True}}
-
-        mock_opa_post = mocker.patch(
-            "fastapi_opa.opa.opa_middleware.requests.post",
-            return_value=mock_response,
+            opa_client=opa_client,
         )
 
         app_mock = AsyncMock()
@@ -163,11 +155,10 @@ class TestOPAIntegrationWithEnableAuthorization:
         await middleware(scope, AsyncMock(), AsyncMock())
 
         # OPA should have been called
-        mock_opa_post.assert_called_once()
+        assert len(opa_client.calls) == 1
 
         # Verify request details were sent to OPA
-        call_args = mock_opa_post.call_args
-        opa_input = json.loads(call_args[1]["data"])
+        opa_input = cast(dict[str, dict[str, object]], opa_client.calls[0][1])
         assert opa_input["input"]["request_method"] == "GET"
         assert opa_input["input"]["request_path"] == ["api", "resource"]
 
@@ -183,13 +174,11 @@ class TestOPAIntegrationWithEnableAuthorization:
             )
         )
 
+        opa_client = FakeOPAClient()
         config = OPAConfig(
             authentication=mock_auth,
             opa_host="http://localhost:8181",
-        )
-
-        mock_opa_post = mocker.patch(
-            "fastapi_opa.opa.opa_middleware.requests.post"
+            opa_client=opa_client,
         )
 
         app_mock = AsyncMock()
@@ -211,7 +200,7 @@ class TestOPAIntegrationWithEnableAuthorization:
         await middleware(scope, AsyncMock(), AsyncMock())
 
         # OPA should NOT have been called
-        mock_opa_post.assert_not_called()
+        assert opa_client.calls == []
 
         # But request should have been allowed through
         app_mock.assert_called_once()
@@ -233,16 +222,8 @@ class TestAuthorizationDenial:
         config = OPAConfig(
             authentication=mock_auth,
             opa_host="http://localhost:8181",
-        )
-
-        # OPA denies the request
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"result": {"allow": False}}
-
-        mocker.patch(
-            "fastapi_opa.opa.opa_middleware.requests.post",
-            return_value=mock_response,
+            # OPA denies the request
+            opa_client=FakeOPAClient(payload={"result": {"allow": False}}),
         )
 
         sent_messages = []
@@ -292,16 +273,8 @@ class TestAuthorizationDenial:
         config = OPAConfig(
             authentication=mock_auth,
             opa_host="http://localhost:8181",
-        )
-
-        # OPA allows the request
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"result": {"allow": True}}
-
-        mocker.patch(
-            "fastapi_opa.opa.opa_middleware.requests.post",
-            return_value=mock_response,
+            # OPA allows the request
+            opa_client=FakeOPAClient(),
         )
 
         app_mock = AsyncMock()

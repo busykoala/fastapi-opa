@@ -1,19 +1,8 @@
-from unittest.mock import patch
-
-import pytest
 from fastapi.testclient import TestClient
 
 
-@pytest.fixture
-def mock_opa_response():
-    with patch("fastapi_opa.opa.opa_middleware.requests.post") as mock_post:
-        mock_post.return_value.status_code = 200
-        mock_post.return_value.json.return_value = {"result": {"allow": True}}
-        yield mock_post
-
-
 def test_options_request_with_auth(
-    client_multiple_authentications, api_key_auth, mock_opa_response
+    client_multiple_authentications, api_key_auth, opa_client
 ):
     client: TestClient = client_multiple_authentications
 
@@ -25,6 +14,7 @@ def test_options_request_with_auth(
     assert response.status_code == 200
     assert response.headers["Allow"] == "OPTIONS, GET, POST"
     assert response.json() == {}
+    assert len(opa_client.calls) == 1  # OPTIONS is authorized like any method
 
     # Test OPTIONS request for a non-existing item with authentication
     response = client.options(
@@ -36,7 +26,7 @@ def test_options_request_with_auth(
 
 
 def test_options_request_without_auth(
-    client_multiple_authentications, mock_opa_response
+    client_multiple_authentications, opa_client
 ):
     client: TestClient = client_multiple_authentications
 
@@ -49,3 +39,6 @@ def test_options_request_without_auth(
     response = client.options("/items/3")
     assert response.status_code == 401
     assert response.json() == {"message": "Unauthorized"}
+    assert (
+        opa_client.calls == []
+    )  # OPA is never asked about the unauthenticated

@@ -2,7 +2,6 @@ import asyncio
 from collections.abc import AsyncGenerator
 from collections.abc import Callable
 from typing import Any
-from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -65,13 +64,8 @@ async def test_large_request_body(
     mocks the OPA middleware to ensure the app processes the request as if it
     were allowed by OPA.
     """
-    with patch("fastapi_opa.opa.opa_middleware.requests.post") as req:
-        # Mock the OPA middleware to allow the request
-        req.return_value.status_code = 200
-        req.return_value.json = lambda: {"result": {"allow": True}}
+    # The client fixture's in-memory OPA allows the request.
+    response = await simulate_request(client, large_body)
 
-        # Simulate the ASGI request and capture the response
-        response = await simulate_request(client, large_body)
-
-        # Verify that the app processes the large body correctly
-        assert response == '{"msg":"Received 5242917 bytes"}'
+    # Verify that the app processes the large body correctly
+    assert response == '{"msg":"Received 5242917 bytes"}'

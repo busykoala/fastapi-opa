@@ -2,7 +2,6 @@
 
 from typing import Any
 from typing import cast
-from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
@@ -14,6 +13,7 @@ from fastapi_opa.models import AuthenticationResult
 from fastapi_opa.models import TokenCookieConfig
 from fastapi_opa.opa.cookie_middleware import CookieAuthMiddleware
 from tests.utils import AuthenticationDummy
+from tests.utils import FakeOPAClient
 
 
 class TestTokenCookieConfig:
@@ -332,7 +332,9 @@ class TestCookieMiddlewareIntegration:
         """Create test client with cookie middleware"""
         opa_host = "http://localhost:8181"
         auth = AuthenticationDummy()
-        opa_config = OPAConfig(authentication=auth, opa_host=opa_host)
+        opa_config = OPAConfig(
+            authentication=auth, opa_host=opa_host, opa_client=FakeOPAClient()
+        )
         cookie_config = TokenCookieConfig()
 
         app = FastAPI()
@@ -350,13 +352,7 @@ class TestCookieMiddlewareIntegration:
 
     def test_request_without_cookie_or_auth(self, client_with_cookies):
         """Test request without cookie or authorization header"""
-        with patch(
-            "fastapi_opa.opa.opa_middleware.requests.post"
-        ) as mock_post:
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json = lambda: {"result": {"allow": True}}
-
-            response = client_with_cookies.get("/")
+        response = client_with_cookies.get("/")
 
         assert response.status_code == 200
         assert response.json() == {"msg": "success"}

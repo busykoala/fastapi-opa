@@ -16,6 +16,7 @@ from fastapi_opa.auth.auth_api_key import APIKeyAuthentication
 from fastapi_opa.auth.auth_api_key import APIKeyConfig
 from fastapi_opa.opa.enrichment.graphql_enrichment import GraphQLInjectable
 from tests.utils import AuthenticationDummy
+from tests.utils import FakeOPAClient
 from tests.utils import OPAInjectableExample
 
 nest_asyncio.apply()
@@ -28,10 +29,18 @@ WRITABLE_ITEMS = {
 
 
 @pytest.fixture
-def client():
+def opa_client() -> FakeOPAClient:
+    """The OPA decision endpoint, in memory: allows by default, records every call."""
+    return FakeOPAClient()
+
+
+@pytest.fixture
+def client(opa_client):
     opa_host = "http://localhost:8181"
     oidc_auth = AuthenticationDummy()
-    opa_config = OPAConfig(authentication=oidc_auth, opa_host=opa_host)
+    opa_config = OPAConfig(
+        authentication=oidc_auth, opa_host=opa_host, opa_client=opa_client
+    )
 
     app = FastAPI()
     app.add_middleware(OPAMiddleware, config=opa_config)
@@ -85,12 +94,15 @@ def large_body() -> Callable[[], AsyncGenerator[dict[str, Any], None]]:
 
 
 @pytest.fixture
-def injected_client():
+def injected_client(opa_client):
     opa_host = "http://localhost:8181"
     oidc_auth = AuthenticationDummy()
     injectable = OPAInjectableExample("example_injectable")
     opa_config = OPAConfig(
-        authentication=oidc_auth, opa_host=opa_host, injectables=[injectable]
+        authentication=oidc_auth,
+        opa_host=opa_host,
+        injectables=[injectable],
+        opa_client=opa_client,
     )
 
     app = FastAPI()
@@ -113,12 +125,14 @@ def api_key_auth():
 
 
 @pytest.fixture
-def client_multiple_authentications(api_key_auth):
+def client_multiple_authentications(api_key_auth, opa_client):
     opa_host = "http://localhost:8181"
     oidc_auth = AuthenticationDummy(accept_all=False)
 
     opa_config = OPAConfig(
-        authentication=[oidc_auth, api_key_auth["auth"]], opa_host=opa_host
+        authentication=[oidc_auth, api_key_auth["auth"]],
+        opa_host=opa_host,
+        opa_client=opa_client,
     )
 
     app = FastAPI()
@@ -147,12 +161,15 @@ def client_multiple_authentications(api_key_auth):
 
 
 @pytest.fixture
-def gql_injected_client():
+def gql_injected_client(opa_client):
     opa_host = "http://localhost:8181"
     oidc_auth = AuthenticationDummy()
     injectable = GraphQLInjectable("gql_injectable")
     opa_config = OPAConfig(
-        authentication=oidc_auth, opa_host=opa_host, injectables=[injectable]
+        authentication=oidc_auth,
+        opa_host=opa_host,
+        injectables=[injectable],
+        opa_client=opa_client,
     )
 
     app = FastAPI()
