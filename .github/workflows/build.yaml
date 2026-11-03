@@ -25,7 +25,7 @@ jobs:
       - name: Update system deps
         run: sudo apt-get update
       - name: Install system deps
-        run: sudo apt-get -y install libxml2-dev libxmlsec1-dev pkg-config libxmlsec1-openssl
+        run: sudo apt-get -y install libxml2-dev libxmlsec1-dev pkg-config
       - name: Install dependencies
         run: |
           uv sync --python ${{ matrix.python-version }} --all-extras --group dev
@@ -64,7 +64,7 @@ jobs:
       - name: Update system deps
         run: sudo apt-get update
       - name: Install system deps
-        run: sudo apt-get -y install libxml2-dev libxmlsec1-dev pkg-config libxmlsec1-openssl
+        run: sudo apt-get -y install libxml2-dev libxmlsec1-dev pkg-config
       - name: Install lowest compatible direct dependencies
         run: |
           uv venv .venv-lowest --python ${{ matrix.python-version }}
